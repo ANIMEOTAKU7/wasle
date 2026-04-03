@@ -84,7 +84,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     setInputText(''); // Optimistic clear
 
     try {
-      const { data: chat } = await supabase.from('chats').select('user1_id, user2_id').eq('id', chatId).single();
+      const { data: chat, error: chatError } = await supabase.from('chats').select('user1_id, user2_id').eq('id', chatId).single();
+      if (chatError) throw new Error("Chat fetch error: " + chatError.message);
       if (!chat) throw new Error("Chat not found");
 
       const receiverId = chat.user1_id === currentUserId ? chat.user2_id : chat.user1_id;
@@ -96,10 +97,10 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
         content: textToSend
       });
 
-      if (error) throw error;
-    } catch (error) {
+      if (error) throw new Error("Insert error: " + error.message);
+    } catch (error: any) {
       console.error("Error sending message:", error);
-      alert("فشل إرسال الرسالة");
+      alert("فشل إرسال الرسالة: " + error.message);
     }
   };
 
