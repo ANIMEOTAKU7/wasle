@@ -20,6 +20,18 @@ const DEFAULT_INTERESTS = [
   { name: 'طبخ', icon: '🍳' },
   { name: 'تصوير', icon: '📸' },
   { name: 'فن', icon: '🎨' },
+  { name: 'أنمي', icon: '🎌' },
+  { name: 'برمجة', icon: '👨‍💻' },
+  { name: 'قهوة', icon: '☕' },
+  { name: 'سيارات', icon: '🚗' },
+  { name: 'لياقة بدنية', icon: '💪' },
+  { name: 'حيوانات أليفة', icon: '🐈' },
+  { name: 'تطوير الذات', icon: '🌱' },
+  { name: 'ريادة أعمال', icon: '💼' },
+  { name: 'تاريخ', icon: '🏛️' },
+  { name: 'لغات', icon: '🗣️' },
+  { name: 'شعر وأدب', icon: '✒️' },
+  { name: 'علوم', icon: '🔬' },
 ];
 
 export default function InterestsScreen({ onNext, onBack }: { onNext: () => void, onBack: () => void }) {
