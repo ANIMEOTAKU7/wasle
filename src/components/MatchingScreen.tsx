@@ -72,6 +72,7 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
           .from('chats')
           .select('id')
           .or(`and(user1_id.eq.${user.id},user2_id.eq.${otherUserId}),and(user1_id.eq.${otherUserId},user2_id.eq.${user.id})`)
+          .order('created_at', { ascending: true })
           .limit(1);
 
         if (chatError) throw chatError;
@@ -79,16 +80,25 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
         if (existingChats && existingChats.length > 0) {
           onMatchRef.current(existingChats[0].id);
         } else {
-          // 3. Create a new chat
-          const { data: newChat, error: insertError } = await supabase
-            .from('chats')
-            .insert({ user1_id: user.id, user2_id: otherUserId })
-            .select()
-            .single();
+          // Prevent race condition: only the user with the smaller ID creates the chat
+          const isInitiator = user.id < otherUserId;
+          
+          if (isInitiator) {
+            // 3. Create a new chat
+            const { data: newChat, error: insertError } = await supabase
+              .from('chats')
+              .insert({ user1_id: user.id, user2_id: otherUserId })
+              .select()
+              .single();
 
-          if (insertError) throw insertError;
-          if (newChat) {
-            onMatchRef.current(newChat.id);
+            if (insertError) throw insertError;
+            if (newChat) {
+              onMatchRef.current(newChat.id);
+            }
+          } else {
+            // Wait for the initiator to create the chat. We will find it in the next polling interval.
+            console.log("Waiting for initiator to create the chat...");
+            return;
           }
         }
       } catch (error) {
