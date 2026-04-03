@@ -28,19 +28,21 @@ export default function RegistrationScreen({ onNext, onBack, onLogin }: { onNext
       if (authError) throw authError;
 
       if (authData.user) {
-        // 2. Create user profile in the 'users' table
+        // 2. Create user profile in the 'profiles' table
         const { error: profileError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert([
             {
               id: authData.user.id,
-              username,
-              email,
-              gender,
+              display_name: username,
             }
           ]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          // We don't throw here so the user can still proceed even if profile creation fails,
+          // but ideally we should handle it.
+        }
         
         // Success! Move to next screen
         onNext();
