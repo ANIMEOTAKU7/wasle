@@ -63,9 +63,8 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
         }
 
         if (!otherUserId) {
-          console.log("No other users found to match with.");
-          // We will just wait indefinitely or show an error.
-          return;
+          console.log("No other users found to match with. Waiting...");
+          return; // Will try again in the next interval
         }
 
         // 2. Check if a chat already exists between these two users
@@ -97,13 +96,17 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
       }
     };
 
-    const matchTimer = setTimeout(() => {
+    // Poll every 3 seconds to find a match
+    const matchInterval = setInterval(() => {
       findMatch();
-    }, APP_CONSTANTS.MATCHING_DURATION_MS);
+    }, 3000);
+
+    // Also try immediately once
+    findMatch();
 
     return () => {
       clearInterval(timer);
-      clearTimeout(matchTimer);
+      clearInterval(matchInterval);
     };
   }, []); // Empty dependency array prevents infinite re-renders
 
