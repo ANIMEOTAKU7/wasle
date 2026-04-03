@@ -107,14 +107,16 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
           .from('user_interests')
           .insert(userInterests);
 
-        if (error) throw error;
+        if (error) {
+          alert("حدث خطأ في قاعدة البيانات: " + error.message);
+          throw error;
+        }
       }
       
       onNext();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving interests:', error);
-      // Even if it fails (e.g., RLS issues), let the user proceed for now in the demo
-      onNext();
+      alert("لم يتم حفظ الاهتمامات: " + (error.message || "خطأ غير معروف"));
     } finally {
       setSaving(false);
     }

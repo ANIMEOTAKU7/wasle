@@ -29,7 +29,7 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
         setEditName(profileData?.display_name || '');
         setEditBio(profileData?.bio || '');
 
-        const { data: interestsData } = await supabase
+        const { data: interestsData, error: interestsError } = await supabase
           .from('user_interests')
           .select(`
             interests (
@@ -39,6 +39,10 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
             )
           `)
           .eq('user_id', user.id);
+          
+        if (interestsError) {
+          console.error('Error fetching user interests:', interestsError);
+        }
           
         if (interestsData) {
           // @ts-ignore
