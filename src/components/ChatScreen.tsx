@@ -21,48 +21,63 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
   }, [messages]);
 
   useEffect(() => {
+    let isMounted = true;
     let subscription: any = null;
+    let pollInterval: any = null;
 
     const setupChat = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !isMounted) return;
       setCurrentUserId(user.id);
 
       if (!chatId) return;
 
       // Fetch chat details to get the other user's profile
       const { data: chat } = await supabase.from('chats').select('user1_id, user2_id').eq('id', chatId).single();
-      if (chat) {
+      if (chat && isMounted) {
         const otherUserId = chat.user1_id === user.id ? chat.user2_id : chat.user1_id;
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', otherUserId).single();
-        if (profile) {
+        if (profile && isMounted) {
           setOtherUserProfile(profile);
         }
       }
 
-      // Fetch existing messages
-      const { data: existingMessages, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
+      const fetchMessages = async () => {
+        const { data: existingMessages, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('chat_id', chatId)
+          .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error("Error fetching messages:", error);
-      } else if (existingMessages) {
-        setMessages(existingMessages);
-      }
+        if (error) {
+          console.error("Error fetching messages:", error);
+        } else if (existingMessages && isMounted) {
+          setMessages(existingMessages);
+        }
+      };
+
+      if (!isMounted) return;
+
+      fetchMessages();
+      pollInterval = setInterval(fetchMessages, 3000);
+
+      if (!isMounted) return;
 
       // Subscribe to new messages
       subscription = supabase
-        .channel(`chat_${chatId}`)
+        .channel(`chat_${chatId}_${Date.now()}`)
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
           table: 'messages',
           filter: `chat_id=eq.${chatId}`
         }, (payload) => {
-          setMessages(prev => [...prev, payload.new]);
+          if (isMounted) {
+            setMessages(prev => {
+              if (prev.find(m => m.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+          }
         })
         .subscribe();
     };
@@ -70,6 +85,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     setupChat();
 
     return () => {
+      isMounted = false;
+      if (pollInterval) clearInterval(pollInterval);
       if (subscription) {
         supabase.removeChannel(subscription);
       }
@@ -90,14 +107,21 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
       const receiverId = chat.user1_id === currentUserId ? chat.user2_id : chat.user1_id;
 
-      const { error } = await supabase.from('messages').insert({
+      const { data: newMsg, error } = await supabase.from('messages').insert({
         chat_id: chatId,
         sender_id: currentUserId,
         receiver_id: receiverId,
         content: textToSend
-      });
+      }).select().single();
 
       if (error) throw new Error("Insert error: " + error.message);
+
+      if (newMsg) {
+        setMessages(prev => {
+          if (prev.find(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      }
     } catch (error: any) {
       console.error("Error sending message:", error);
       alert("فشل إرسال الرسالة: " + error.message);
