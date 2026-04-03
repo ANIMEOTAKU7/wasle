@@ -9,6 +9,19 @@ interface Interest {
   icon: string;
 }
 
+const DEFAULT_INTERESTS = [
+  { name: 'كرة القدم', icon: '⚽' },
+  { name: 'ألعاب', icon: '🎮' },
+  { name: 'موسيقى', icon: '🎵' },
+  { name: 'كتب', icon: '📚' },
+  { name: 'أفلام', icon: '🎬' },
+  { name: 'تقنية', icon: '💻' },
+  { name: 'سفر', icon: '✈️' },
+  { name: 'طبخ', icon: '🍳' },
+  { name: 'تصوير', icon: '📸' },
+  { name: 'فن', icon: '🎨' },
+];
+
 export default function InterestsScreen({ onNext, onBack }: { onNext: () => void, onBack: () => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -21,24 +34,30 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
 
   const fetchInterests = async () => {
     try {
+      // 1. Fetch existing interests
       const { data, error } = await supabase
         .from('interests')
         .select('*')
         .order('name');
       
       if (error) throw error;
-      if (data) setInterests(data);
+
+      // 2. If empty, seed the database with defaults
+      if (!data || data.length === 0) {
+        const { data: insertedData, error: insertError } = await supabase
+          .from('interests')
+          .insert(DEFAULT_INTERESTS)
+          .select();
+          
+        if (insertError) throw insertError;
+        if (insertedData) {
+          setInterests(insertedData);
+        }
+      } else {
+        setInterests(data);
+      }
     } catch (error) {
-      console.error('Error fetching interests:', error);
-      // Fallback data if DB is empty or fails
-      setInterests([
-        { id: 'football', name: 'كرة القدم', icon: '⚽' },
-        { id: 'gaming', name: 'ألعاب', icon: '🎮' },
-        { id: 'music', name: 'موسيقى', icon: '🎵' },
-        { id: 'books', name: 'كتب', icon: '📚' },
-        { id: 'movies', name: 'أفلام', icon: '🎬' },
-        { id: 'tech', name: 'تقنية', icon: '💻' },
-      ]);
+      console.error('Error fetching/seeding interests:', error);
     } finally {
       setLoading(false);
     }
@@ -65,11 +84,13 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
           interest_id: interestId
         }));
 
+        // Delete old interests
         await supabase
           .from('user_interests')
           .delete()
           .eq('user_id', user.id);
 
+        // Insert new interests
         const { error } = await supabase
           .from('user_interests')
           .insert(userInterests);
@@ -80,6 +101,7 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
       onNext();
     } catch (error) {
       console.error('Error saving interests:', error);
+      // Even if it fails (e.g., RLS issues), let the user proceed for now in the demo
       onNext();
     } finally {
       setSaving(false);

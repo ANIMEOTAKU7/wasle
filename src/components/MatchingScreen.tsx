@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { APP_CONSTANTS } from '../constants';
+import { supabase } from '../lib/supabase';
 
-export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => void, onMatch: () => void }) {
+export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => void, onMatch: (chatId: string) => void }) {
   const [seconds, setSeconds] = useState(0);
   const onMatchRef = useRef(onMatch);
 
@@ -16,9 +17,88 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
       setSeconds(s => s + 1);
     }, 1000);
     
-    // Simulate finding a match
+    // Simulate finding a match and create a real chat in Supabase
+    const findMatch = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.error("User not authenticated");
+          return;
+        }
+
+        // 1. Get my interests
+        const { data: myInterests } = await supabase
+          .from('user_interests')
+          .select('interest_id')
+          .eq('user_id', user.id);
+        
+        let otherUserId = null;
+
+        if (myInterests && myInterests.length > 0) {
+          const myInterestIds = myInterests.map(i => i.interest_id);
+          
+          // Find another user with shared interests
+          const { data: sharedUsers, error: sharedError } = await supabase
+            .from('user_interests')
+            .select('user_id')
+            .neq('user_id', user.id)
+            .in('interest_id', myInterestIds)
+            .limit(1);
+            
+          if (sharedUsers && sharedUsers.length > 0) {
+            otherUserId = sharedUsers[0].user_id;
+          }
+        }
+        
+        // Fallback: if no one with shared interests, just find anyone
+        if (!otherUserId) {
+           const { data: otherUsers } = await supabase
+             .from('profiles')
+             .select('id')
+             .neq('id', user.id)
+             .limit(1);
+           if (otherUsers && otherUsers.length > 0) {
+             otherUserId = otherUsers[0].id;
+           }
+        }
+
+        if (!otherUserId) {
+          console.log("No other users found to match with.");
+          // We will just wait indefinitely or show an error.
+          return;
+        }
+
+        // 2. Check if a chat already exists between these two users
+        const { data: existingChats, error: chatError } = await supabase
+          .from('chats')
+          .select('id')
+          .or(`and(user1_id.eq.${user.id},user2_id.eq.${otherUserId}),and(user1_id.eq.${otherUserId},user2_id.eq.${user.id})`)
+          .limit(1);
+
+        if (chatError) throw chatError;
+
+        if (existingChats && existingChats.length > 0) {
+          onMatchRef.current(existingChats[0].id);
+        } else {
+          // 3. Create a new chat
+          const { data: newChat, error: insertError } = await supabase
+            .from('chats')
+            .insert({ user1_id: user.id, user2_id: otherUserId })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          if (newChat) {
+            onMatchRef.current(newChat.id);
+          }
+        }
+      } catch (error) {
+        console.error("Error finding match:", error);
+      }
+    };
+
     const matchTimer = setTimeout(() => {
-      onMatchRef.current();
+      findMatch();
     }, APP_CONSTANTS.MATCHING_DURATION_MS);
 
     return () => {
@@ -155,4 +235,5 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
     </div>
   );
 }
+
 

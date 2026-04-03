@@ -12,6 +12,7 @@ import SecurityScreen from './components/SecurityScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -48,13 +49,19 @@ export default function App() {
       case 'matching':
         return (
           <motion.div key="matching" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
-            <MatchingScreen onCancel={() => setCurrentScreen('home')} onMatch={() => setCurrentScreen('chat')} />
+            <MatchingScreen 
+              onCancel={() => setCurrentScreen('home')} 
+              onMatch={(chatId) => {
+                setCurrentChatId(chatId);
+                setCurrentScreen('chat');
+              }} 
+            />
           </motion.div>
         );
       case 'chat':
         return (
           <motion.div key="chat" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-            <ChatScreen onBack={() => setCurrentScreen('home')} />
+            <ChatScreen chatId={currentChatId} onBack={() => setCurrentScreen('home')} />
           </motion.div>
         );
       case 'profile':
