@@ -7,7 +7,12 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
   const [inputText, setInputText] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<any>(null);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const channelRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reporting State
   const [reportTarget, setReportTarget] = useState<any | null>(null); // Can be a message or 'chat'
@@ -63,9 +68,13 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
       if (!isMounted) return;
 
-      // Subscribe to new messages
+      // Subscribe to new messages and typing events
       subscription = supabase
-        .channel(`chat_${chatId}_${Date.now()}`)
+        .channel(`chat_${chatId}_${Date.now()}`, {
+          config: {
+            broadcast: { self: false }
+          }
+        })
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
@@ -77,9 +86,23 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
               if (prev.find(m => m.id === payload.new.id)) return prev;
               return [...prev, payload.new];
             });
+            // If they sent a message, they stopped typing
+            setIsOtherTyping(false);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          }
+        })
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          if (isMounted && payload.payload.userId !== user.id) {
+            setIsOtherTyping(true);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+              if (isMounted) setIsOtherTyping(false);
+            }, 2000);
           }
         })
         .subscribe();
+        
+      channelRef.current = subscription;
     };
 
     setupChat();
@@ -125,6 +148,79 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     } catch (error: any) {
       console.error("Error sending message:", error);
       alert("فشل إرسال الرسالة: " + error.message);
+    }
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    if (channelRef.current && currentUserId) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { userId: currentUserId }
+      });
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !chatId || !currentUserId) return;
+
+    // Validate file type and size (max 5MB)
+    if (!file.type.startsWith('image/')) {
+      alert('الرجاء اختيار صورة صالحة.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('حجم الصورة يجب أن لا يتجاوز 5 ميجابايت.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // 1. Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${chatId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat_images')
+        .upload(fileName, file);
+
+      if (uploadError) throw new Error("Upload error: " + uploadError.message);
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat_images')
+        .getPublicUrl(fileName);
+
+      // 3. Send Message with image_url
+      const { data: chat, error: chatError } = await supabase.from('chats').select('user1_id, user2_id').eq('id', chatId).single();
+      if (chatError) throw new Error("Chat fetch error: " + chatError.message);
+
+      const receiverId = chat.user1_id === currentUserId ? chat.user2_id : chat.user1_id;
+
+      const { data: newMsg, error: insertError } = await supabase.from('messages').insert({
+        chat_id: chatId,
+        sender_id: currentUserId,
+        receiver_id: receiverId,
+        content: '📷 صورة',
+        image_url: publicUrl
+      }).select().single();
+
+      if (insertError) throw new Error("Insert error: " + insertError.message);
+
+      if (newMsg) {
+        setMessages(prev => {
+          if (prev.find(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      }
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      alert("فشل إرسال الصورة: " + error.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -271,12 +367,38 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                     
                     {/* Message Bubble */}
                     <div className={`px-4 py-2.5 rounded-2xl max-w-[260px] text-sm ${isMine ? 'bg-primary text-white rounded-tl-sm' : 'bg-white/10 text-white/90 rounded-tr-sm'}`}>
-                      {msg.content}
+                      {msg.image_url ? (
+                        <div className="flex flex-col gap-1">
+                          <img src={msg.image_url} alt="صورة" className="rounded-xl max-w-full h-auto max-h-[200px] object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.image_url, '_blank')} />
+                          {msg.content !== '📷 صورة' && <span>{msg.content}</span>}
+                        </div>
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+
+            {/* Typing Indicator */}
+            <AnimatePresence>
+              {isOtherTyping && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex items-start gap-1"
+                >
+                  <div className="px-4 py-3 rounded-2xl rounded-tr-sm bg-white/5 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div ref={messagesEndRef} />
           </div>
         </section>
@@ -290,19 +412,39 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
             </button>
           </div>
 
-          <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2 bg-white/5 rounded-full p-1 pr-5 border border-white/5 focus-within:border-white/20 transition-colors">
+          <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2 bg-white/5 rounded-full p-1 pr-2 border border-white/5 focus-within:border-white/20 transition-colors">
             <input 
-              className="flex-1 bg-transparent border-none text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-0 py-3" 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleImageUpload} 
+            />
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || !chatId}
+              className="p-2 text-white/50 hover:text-white transition-colors disabled:opacity-50 shrink-0"
+              title="إرفاق صورة"
+            >
+              {isUploading ? (
+                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+              ) : (
+                <span className="material-symbols-outlined text-[20px]">image</span>
+              )}
+            </button>
+            <input 
+              className="flex-1 bg-transparent border-none text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-0 py-3 px-2" 
               placeholder="اكتب رسالة..." 
               type="text" 
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={handleTyping}
               disabled={!chatId}
             />
             <button 
               type="submit"
               disabled={!inputText.trim() || !chatId}
-              className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center transition-transform active:scale-95 shrink-0 disabled:opacity-50"
+              className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center transition-transform active:scale-95 shrink-0 disabled:opacity-50 ml-1"
             >
               <span className="material-symbols-outlined text-sm rtl:-rotate-180">send</span>
             </button>

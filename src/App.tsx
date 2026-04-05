@@ -9,6 +9,7 @@ import MatchingScreen from './components/MatchingScreen';
 import ChatScreen from './components/ChatScreen';
 import ProfileScreen from './components/ProfileScreen';
 import SecurityScreen from './components/SecurityScreen';
+import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
@@ -74,6 +75,12 @@ export default function App() {
         return (
           <motion.div key="security" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
             <SecurityScreen onBack={() => setCurrentScreen('profile')} />
+          </motion.div>
+        );
+      case 'admin':
+        return (
+          <motion.div key="admin" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+            <AdminDashboard onBack={() => setCurrentScreen('home')} />
           </motion.div>
         );
       default:

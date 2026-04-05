@@ -18,6 +18,8 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -29,6 +31,17 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
         if (authError) throw authError;
 
         if (user && isMounted) {
+          // Check if banned
+          const { data: banData } = await supabase.from('banned_users').select('id').eq('user_id', user.id).single();
+          if (banData) {
+            setIsBanned(true);
+            return;
+          }
+
+          if (user.email === 'smoorahmad6@gmail.com') {
+            setIsAdmin(true);
+          }
+
           const { data: profileData, error: profileError } = await supabase
             .from('users')
             .select('*')
@@ -72,6 +85,16 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
     };
   }, []);
 
+  if (isBanned) {
+    return (
+      <div className="bg-background min-h-screen flex flex-col items-center justify-center max-w-[390px] mx-auto px-6 text-center">
+        <span className="material-symbols-outlined text-red-500 text-6xl mb-4">block</span>
+        <h1 className="text-white font-bold text-xl mb-2">تم حظر حسابك</h1>
+        <p className="text-white/60 text-sm">لقد تم حظر حسابك نهائياً بسبب انتهاك شروط الاستخدام أو بناءً على بلاغات من مستخدمين آخرين.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-surface text-on-surface min-h-screen flex flex-col items-center max-w-[390px] mx-auto relative overflow-x-hidden">
       {/* Top Bar Component */}
@@ -92,7 +115,16 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
             <span className="text-sm font-bold text-white">{profile?.username || 'مستخدم'}</span>
           </div>
         </motion.div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button 
+              onClick={() => onNav('admin')}
+              aria-label="لوحة الإدارة" 
+              className="relative p-2 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+            </button>
+          )}
           <button aria-label="الإشعارات" className="relative p-2 rounded-full hover:bg-white/5 transition-colors text-white/70 hover:text-white">
             <span className="material-symbols-outlined">notifications_none</span>
           </button>
