@@ -1,24 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-background: #10141a;
-  --color-surface: #10141a;
-  --color-primary: #d2bbff;
-  --color-primary-container: #7c3aed;
+  --color-background: #0a0c10;
+  --color-surface: #161b22;
+  --color-primary: #7c3aed;
+  --color-primary-container: #2e1065;
   --color-on-primary-container: #ede0ff;
-  --color-secondary: #d2bbff;
+  --color-secondary: #3b82f6;
   --color-error: #ffb4ab;
-  --color-surface-container-low: #181c22;
-  --color-surface-container-high: #262a31;
-  --color-surface-container-highest: #31353c;
-  --color-on-surface: #dfe2eb;
-  --color-on-surface-variant: #ccc3d8;
-  --color-outline-variant: #4a4455;
-  --color-outline: #958da1;
+  --color-surface-container-low: #0d1117;
+  --color-surface-container-high: #21262d;
+  --color-surface-container-highest: #30363d;
+  --color-on-surface: #f0f6fc;
+  --color-on-surface-variant: #8b949e;
+  --color-outline-variant: #30363d;
+  --color-outline: #484f58;
 
-  --font-headline: "Manrope", sans-serif;
-  --font-body: "IBM Plex Sans Arabic", sans-serif;
-  --font-arabic: "IBM Plex Sans Arabic", sans-serif;
+  --font-headline: "Tajawal", "Manrope", sans-serif;
+  --font-body: "Tajawal", sans-serif;
+  --font-arabic: "Tajawal", sans-serif;
 }
 
 body {
@@ -28,6 +29,7 @@ body {
   overflow-x: hidden;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  direction: rtl;
 }
 
 .material-symbols-outlined {

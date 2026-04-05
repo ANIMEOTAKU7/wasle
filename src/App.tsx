@@ -10,6 +10,7 @@ import ChatScreen from './components/ChatScreen';
 import ProfileScreen from './components/ProfileScreen';
 import SecurityScreen from './components/SecurityScreen';
 import AdminDashboard from './components/AdminDashboard';
+import ChatsListScreen from './components/ChatsListScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
@@ -62,7 +63,20 @@ export default function App() {
       case 'chat':
         return (
           <motion.div key="chat" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-            <ChatScreen chatId={currentChatId} onBack={() => setCurrentScreen('home')} />
+            <ChatScreen chatId={currentChatId} onBack={() => setCurrentScreen('chats')} />
+          </motion.div>
+        );
+      case 'chats':
+        return (
+          <motion.div key="chats" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}>
+            <ChatsListScreen 
+              onChatSelect={(chatId) => {
+                setCurrentChatId(chatId);
+                setCurrentScreen('chat');
+              }}
+              onBack={() => setCurrentScreen('home')}
+              onNav={setCurrentScreen}
+            />
           </motion.div>
         );
       case 'profile':

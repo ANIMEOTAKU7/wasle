@@ -125,47 +125,56 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
   return (
     <div className="flex flex-col min-h-screen max-w-[390px] mx-auto relative overflow-hidden">
       {/* Top Navigation */}
-      <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6">
+      <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 shrink-0 bg-background/80 backdrop-blur-xl border-b border-white/5">
         <motion.button 
           aria-label="العودة"
           whileTap={{ scale: 0.9 }}
           onClick={onBack} 
           className="flex items-center justify-center text-white/70 hover:text-white transition-colors p-2 -mr-2"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
         </motion.button>
-        <div className="text-xl font-bold text-white tracking-tighter">Wasel</div>
+        <div className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center">
+            <div className="w-3 h-3 rounded-sm bg-white rotate-45"></div>
+          </div>
+          <span>واصل</span>
+        </div>
         <div className="w-10"></div>
       </header>
 
-      <main className="flex-1 px-6 pt-8 pb-32">
-        {/* Progress Bar */}
-        <div className="w-full bg-white/5 h-1 rounded-full mb-10 overflow-hidden flex" dir="ltr">
-          <motion.div 
-            initial={{ width: "0%" }}
-            animate={{ width: "50%" }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="bg-primary h-full rounded-full"
-          />
+      <main className="flex-1 px-6 pt-10 pb-32 overflow-y-auto no-scrollbar">
+        {/* Progress Indicator */}
+        <div className="flex items-center gap-4 mb-10">
+          <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden flex" dir="ltr">
+            <motion.div 
+              initial={{ width: "0%" }}
+              animate={{ width: "66%" }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="bg-gradient-to-r from-primary to-secondary h-full rounded-full"
+            />
+          </div>
+          <span className="text-[10px] font-bold text-primary tracking-widest uppercase">الخطوة 2/3</span>
         </div>
 
         {/* Hero Section */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10 text-right"
+          className="mb-10"
         >
-          <h1 className="text-2xl font-bold text-white mb-2">ما هي اهتماماتك؟</h1>
-          <p className="text-white/50 text-xs leading-relaxed">اختر من {APP_CONSTANTS.MIN_INTERESTS} إلى {APP_CONSTANTS.MAX_INTERESTS} اهتمامات لنجد لك أشخاصاً مناسبين</p>
+          <h1 className="text-3xl font-black text-white mb-3 leading-tight">ما الذي <span className="text-primary">يهمك؟</span></h1>
+          <p className="text-white/40 text-xs leading-relaxed font-medium">اختر من {APP_CONSTANTS.MIN_INTERESTS} إلى {APP_CONSTANTS.MAX_INTERESTS} اهتمامات لنجد لك أشخاصاً يشاركونك نفس الشغف</p>
         </motion.div>
 
         {/* Interests Grid */}
         {loading ? (
-          <div className="flex justify-center py-10">
-            <span className="material-symbols-outlined animate-spin text-white/30 text-3xl">progress_activity</span>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            <p className="text-white/30 text-xs font-bold animate-pulse">جاري تحميل الاهتمامات...</p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2 mb-10">
+          <div className="flex flex-wrap gap-3 mb-12">
             {interests.map((interest, idx) => {
               const isSelected = selected.includes(interest.id);
               return (
@@ -173,17 +182,17 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
                   key={interest.id}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.05 }}
+                  transition={{ delay: idx * 0.03 }}
                   onClick={() => toggleInterest(interest.id)}
                   whileTap={{ scale: 0.95 }}
-                  className={`rounded-full py-2.5 px-4 flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  className={`rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 border ${
                     isSelected 
-                      ? 'bg-primary text-white' 
-                      : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-gradient-to-tr from-primary to-secondary text-white border-transparent shadow-lg shadow-primary/20 scale-105' 
+                      : 'bg-surface-container-high text-white/60 hover:text-white border-white/5 hover:border-white/20'
                   }`}
                 >
-                  <span className="text-sm">{interest.icon}</span>
-                  <span className="text-xs font-medium whitespace-nowrap">{interest.name}</span>
+                  <span className="text-lg">{interest.icon}</span>
+                  <span className="text-xs font-bold whitespace-nowrap">{interest.name}</span>
                 </motion.div>
               );
             })}
@@ -191,17 +200,23 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
         )}
 
         {/* Counter Indicator */}
-        <div className="flex flex-col items-center justify-center gap-2">
-          <span className="text-white/40 font-medium text-xs">تم اختيار {selected.length}/{APP_CONSTANTS.MAX_INTERESTS}</span>
+        <div className="flex flex-col items-center justify-center gap-4 py-6 rounded-3xl bg-white/5 border border-white/5">
+          <div className="flex items-center gap-3">
+            <span className="text-white/40 font-bold text-[10px] uppercase tracking-widest">تم اختيار</span>
+            <span className={`text-lg font-black ${selected.length >= APP_CONSTANTS.MIN_INTERESTS ? 'text-primary' : 'text-white'}`}>
+              {selected.length}
+            </span>
+            <span className="text-white/20 font-bold text-[10px] uppercase tracking-widest">من {APP_CONSTANTS.MAX_INTERESTS}</span>
+          </div>
           <div className="flex gap-1.5" dir="ltr">
             {[...Array(APP_CONSTANTS.MAX_INTERESTS)].map((_, i) => (
               <motion.div 
                 key={i} 
                 animate={{ 
-                  scale: i < selected.length ? 1 : 1,
+                  scale: i < selected.length ? 1.2 : 1,
                   backgroundColor: i < selected.length ? "#7c3aed" : "rgba(255,255,255,0.1)"
                 }}
-                className="w-1.5 h-1.5 rounded-full"
+                className="w-2 h-2 rounded-full transition-colors duration-300"
               />
             ))}
           </div>
@@ -209,23 +224,23 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
       </main>
 
       {/* Bottom Navigation Shell */}
-      <footer className="fixed bottom-0 w-full max-w-[390px] z-50 bg-[#10141a]/90 backdrop-blur-xl pt-4 pb-8 px-6">
+      <footer className="fixed bottom-0 w-full max-w-[390px] z-50 bg-background/80 backdrop-blur-xl pt-6 pb-10 px-6 border-t border-white/5">
         <motion.button 
-          whileHover={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 1.02 } : {}}
+          whileHover={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 1.02, y: -2 } : {}}
           whileTap={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 0.98 } : {}}
           onClick={selected.length >= APP_CONSTANTS.MIN_INTERESTS && !saving ? handleSaveInterests : undefined}
-          className={`w-full flex items-center justify-center rounded-2xl py-4 transition-all duration-200 group ${
+          className={`w-full flex items-center justify-center rounded-2xl py-4.5 transition-all duration-300 group shadow-xl ${
             selected.length >= APP_CONSTANTS.MIN_INTERESTS 
-              ? 'bg-white text-black cursor-pointer' 
-              : 'bg-white/5 text-white/30 cursor-not-allowed'
+              ? 'bg-white text-black cursor-pointer shadow-white/10' 
+              : 'bg-white/5 text-white/20 cursor-not-allowed'
           }`}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {saving ? (
-              <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+              <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
             ) : (
               <>
-                <span className="font-bold text-sm">حفظ والمتابعة</span>
-                <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
+                <span className="font-black text-sm tracking-tight">حفظ والمتابعة</span>
+                <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
               </>
             )}
           </div>

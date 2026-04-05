@@ -130,19 +130,22 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
 
   return (
     <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden">
-      <main className="w-full max-w-[390px] h-[844px] relative flex flex-col bg-background overflow-hidden">
+      <main className="w-full max-w-[390px] h-[100dvh] relative flex flex-col bg-background overflow-hidden">
         {/* TopAppBar */}
-        <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6">
-          <button onClick={onCancel} className="text-white/50 hover:text-white transition-colors text-sm">إلغاء</button>
-          <h1 className="text-white font-medium text-sm">جاري البحث...</h1>
+        <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 border-b border-white/5 bg-background/80 backdrop-blur-xl">
+          <button onClick={onCancel} className="text-white/40 hover:text-white transition-colors text-xs font-black uppercase tracking-widest">إلغاء</button>
+          <div className="flex flex-col items-center">
+            <h1 className="text-white font-black text-sm tracking-tight">جاري البحث</h1>
+            <span className="text-[9px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Matching</span>
+          </div>
           <div className="w-10 flex justify-end">
-            <motion.span 
+            <motion.div 
               animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="material-symbols-outlined text-primary text-sm"
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20"
             >
-              language
-            </motion.span>
+              <span className="material-symbols-outlined text-primary text-lg">explore</span>
+            </motion.div>
           </div>
         </header>
 
@@ -151,18 +154,18 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
           {/* Radar Animation Center */}
           <div className="relative w-full aspect-square flex items-center justify-center mb-12">
             {/* Radar Rings */}
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <motion.div
                 key={i}
                 initial={{ scale: 0.5, opacity: 0.5 }}
-                animate={{ scale: 2, opacity: 0 }}
+                animate={{ scale: 2.5, opacity: 0 }}
                 transition={{
-                  duration: 3,
+                  duration: 4,
                   repeat: Infinity,
-                  delay: i * 0.8,
+                  delay: i * 1,
                   ease: "easeOut"
                 }}
-                className="absolute w-40 h-40 border border-primary/30 rounded-full"
+                className="absolute w-40 h-40 border border-primary/20 rounded-full"
               />
             ))}
 
@@ -170,78 +173,82 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute w-64 h-64 rounded-full border border-primary/5 bg-gradient-to-tr from-primary/10 to-transparent"
+              className="absolute w-72 h-72 rounded-full border border-primary/5 bg-gradient-to-tr from-primary/20 to-transparent"
               style={{ clipPath: 'polygon(50% 50%, 100% 0, 100% 50%)' }}
             />
 
             {/* User Avatar (Center) */}
             <div className="relative z-10">
-              <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
+              <div className="absolute inset-0 bg-primary/30 blur-3xl rounded-full animate-pulse"></div>
               <motion.div 
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-24 h-24 rounded-full border-4 border-primary p-1 bg-surface-container-high relative z-10 overflow-hidden flex items-center justify-center shadow-[0_0_30px_rgba(210,187,255,0.3)]"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary relative z-10 shadow-[0_0_50px_rgba(124,58,237,0.4)]"
               >
-                <span className="material-symbols-outlined text-4xl text-on-surface-variant">person</span>
+                <div className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container-high flex items-center justify-center">
+                  <span className="material-symbols-outlined text-5xl text-white/20">person</span>
+                </div>
               </motion.div>
             </div>
 
             {/* Floating "Potential Matches" dots */}
-            {[...Array(5)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0 }}
                 animate={{ 
                   opacity: [0, 1, 0],
-                  scale: [0.5, 1, 0.5],
-                  x: Math.sin(i) * 120,
-                  y: Math.cos(i) * 120
+                  scale: [0.5, 1.2, 0.5],
+                  x: Math.sin(i * 45 * (Math.PI / 180)) * 140,
+                  y: Math.cos(i * 45 * (Math.PI / 180)) * 140
                 }}
                 transition={{
-                  duration: 2 + Math.random() * 2,
+                  duration: 3 + Math.random() * 2,
                   repeat: Infinity,
                   delay: Math.random() * 5
                 }}
-                className="absolute w-2 h-2 bg-primary rounded-full blur-[1px]"
+                className="absolute w-2.5 h-2.5 bg-primary rounded-full blur-[1px] shadow-[0_0_10px_#7c3aed]"
               />
             ))}
           </div>
 
           {/* Matching Status Text */}
-          <div className="text-center space-y-2 mb-10 z-10">
-            <motion.h2 
+          <div className="text-center space-y-4 mb-10 z-10">
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-xl font-bold text-white"
+              className="space-y-2"
             >
-              نبحث عن شخص يشاركك اهتماماتك
-            </motion.h2>
-            <p className="text-white/40 text-xs">قد يستغرق هذا بضع ثوانٍ...</p>
-          </div>
-
-          {/* Shared Interests Preview */}
-          <div className="w-full text-center mb-8 z-10">
-            <div className="flex flex-wrap justify-center gap-2">
-              <motion.span 
-                animate={{ opacity: [0.3, 0.8, 0.3] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="text-primary text-xs font-medium"
-              >
-                جاري البحث عن اهتمامات مشتركة...
-              </motion.span>
+              <h2 className="text-2xl font-black text-white tracking-tight">نبحث عن <span className="text-primary">شريكك</span> المثالي</h2>
+              <p className="text-white/40 text-xs font-bold leading-relaxed">نقوم الآن بتحليل اهتماماتك للعثور على شخص يشاركك نفس الشغف</p>
+            </motion.div>
+            
+            <div className="flex justify-center gap-1.5">
+              {[0, 1, 2].map(i => (
+                <motion.div
+                  key={i}
+                  animate={{ opacity: [0.2, 1, 0.2] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  className="w-1.5 h-1.5 rounded-full bg-primary"
+                />
+              ))}
             </div>
           </div>
         </section>
 
         {/* Bottom Controls */}
-        <footer className="p-8 pb-12 space-y-6 z-10">
-          <div className="flex items-center justify-center gap-2">
-            <div className="font-mono text-sm text-white/80" dir="ltr">
+        <footer className="p-8 pb-12 space-y-6 z-10 border-t border-white/5 bg-background/80 backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">وقت الانتظار</span>
+            <div className="font-mono text-xl font-black text-white tracking-widest" dir="ltr">
               {formatTime(seconds)}
             </div>
           </div>
-          <button onClick={onCancel} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-sm rounded-2xl transition-all">
-            إلغاء البحث
+          <button 
+            onClick={onCancel} 
+            className="w-full py-5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-black uppercase tracking-widest rounded-2xl transition-all border border-white/5 active:scale-95"
+          >
+            إلغاء البحث والعودة
           </button>
         </footer>
       </main>

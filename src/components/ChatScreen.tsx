@@ -291,93 +291,119 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden">
       <main className="w-full max-w-[390px] h-[100dvh] flex flex-col relative overflow-hidden bg-background">
         {/* Header */}
-        <header className="w-full z-50 flex justify-between items-center px-6 py-6 shrink-0">
+        <header className="w-full z-50 flex justify-between items-center px-6 py-5 shrink-0 border-b border-white/5 bg-background/80 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="text-white/70 hover:text-white transition-colors p-2 -mr-2">
               <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
             </button>
-            <div className="flex flex-col">
-              <h1 className="text-white text-base font-bold">{otherUserProfile?.display_name || 'مستخدم مجهول'}</h1>
-              <span className="text-white/40 text-xs flex items-center gap-1.5 mt-0.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                متصل الآن
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-primary to-secondary">
+                <div className="w-full h-full rounded-full border-2 border-background overflow-hidden bg-surface-container-high flex items-center justify-center">
+                  {otherUserProfile?.avatar_url ? (
+                    <img src={otherUserProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-white/30 text-xl">person</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-white text-sm font-bold">{otherUserProfile?.username || 'مستخدم مجهول'}</h1>
+                <span className="text-primary text-[10px] font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                  نشط الآن
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button 
               onClick={() => setReportTarget('chat')}
-              className="text-white/40 hover:text-red-400 transition-colors p-2 -ml-2"
-              title="إبلاغ عن المستخدم"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              title="إبلاغ"
             >
-              <span className="material-symbols-outlined text-sm">flag</span>
+              <span className="material-symbols-outlined text-lg">flag</span>
             </button>
           </div>
         </header>
 
         {/* Main Content Canvas */}
-        <section className="flex-1 px-6 overflow-y-auto flex flex-col gap-6 pb-4">
-          {/* Ice Breaker Card / User Bio */}
+        <section className="flex-1 px-4 overflow-y-auto no-scrollbar flex flex-col gap-4 py-4 chat-scroll">
+          {/* Ice Breaker Card */}
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full rounded-2xl bg-white/5 p-6 flex flex-col items-center text-center gap-3 mt-2"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full rounded-3xl bg-white/5 p-6 flex flex-col items-center text-center gap-3 border border-white/5 mb-4"
           >
-            {otherUserProfile?.avatar_url ? (
-              <img src={otherUserProfile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-full object-cover mb-2 border-2 border-primary/30" />
-            ) : (
-              <span className="text-4xl mb-2">👋</span>
-            )}
-            <p className="text-white/90 text-sm leading-relaxed font-medium">
-              {otherUserProfile?.bio ? `"${otherUserProfile.bio}"` : 'ما هو أفضل شيء حدث لك اليوم؟'}
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-primary text-3xl">auto_awesome</span>
+            </div>
+            <p className="text-white font-bold text-sm">
+              {otherUserProfile?.bio ? `"${otherUserProfile.bio}"` : 'ابدأ المحادثة بشيء مميز!'}
             </p>
-            <p className="text-white/30 text-[10px]">
-              {otherUserProfile?.bio ? 'نبذة عن المستخدم' : 'سؤال لكسر الجليد'}
+            <p className="text-white/40 text-[10px] font-medium">
+              {otherUserProfile?.bio ? 'نبذة عن المستخدم' : 'نصيحة لكسر الجليد'}
             </p>
           </motion.div>
 
           {/* Messages Timeline */}
-          <div className="flex flex-col gap-4 flex-1">
-            {/* Date/System Divider */}
-            <div className="flex justify-center my-4">
-              <span className="text-[10px] text-white/20 tracking-widest uppercase">اليوم</span>
-            </div>
-
-            {/* Render Messages */}
-            {messages.length === 0 && (
-              <div className="text-center text-white/30 text-sm mt-10">
-                لا توجد رسائل بعد. كن أول من يلقي التحية! 👋
+          <div className="flex flex-col gap-3 flex-1">
+            {messages.length > 0 && (
+              <div className="flex justify-center my-4">
+                <span className="px-3 py-1 rounded-full bg-white/5 text-[10px] text-white/30 font-bold uppercase tracking-wider">اليوم</span>
               </div>
             )}
+
+            {messages.length === 0 && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-30 mt-10">
+                <span className="material-symbols-outlined text-6xl">chat_bubble</span>
+                <p className="text-sm font-bold">لا توجد رسائل بعد</p>
+              </div>
+            )}
+
             {messages.map((msg) => {
               const isMine = msg.sender_id === currentUserId;
               return (
-                <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} gap-1`}>
-                  <div className="flex items-center gap-2">
-                    {/* Report Button (Visible but subtle for mobile) */}
-                    {!isMine && (
-                      <button 
-                        onClick={() => setReportTarget(msg)}
-                        className="text-white/20 hover:text-red-400 active:text-red-400 transition-colors p-1"
-                        title="إبلاغ عن الرسالة"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">flag</span>
-                      </button>
-                    )}
-                    
-                    {/* Message Bubble */}
-                    <div className={`px-4 py-2.5 rounded-2xl max-w-[260px] text-sm ${isMine ? 'bg-primary text-white rounded-tl-sm' : 'bg-white/10 text-white/90 rounded-tr-sm'}`}>
+                <motion.div 
+                  key={msg.id}
+                  initial={{ opacity: 0, x: isMine ? 20 : -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} gap-1`}
+                >
+                  <div className={`flex items-end gap-2 max-w-[85%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={`px-4 py-3 rounded-2xl text-sm shadow-sm ${
+                      isMine 
+                        ? 'bg-gradient-to-br from-primary to-secondary text-white rounded-br-none' 
+                        : 'bg-surface-container-high text-white/90 rounded-bl-none border border-white/5'
+                    }`}>
                       {msg.image_url ? (
-                        <div className="flex flex-col gap-1">
-                          <img src={msg.image_url} alt="صورة" className="rounded-xl max-w-full h-auto max-h-[200px] object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.image_url, '_blank')} />
-                          {msg.content !== '📷 صورة' && <span>{msg.content}</span>}
+                        <div className="flex flex-col gap-2">
+                          <img 
+                            src={msg.image_url} 
+                            alt="صورة" 
+                            className="rounded-xl max-w-full h-auto max-h-[250px] object-cover cursor-pointer hover:brightness-110 transition-all" 
+                            onClick={() => window.open(msg.image_url, '_blank')} 
+                            referrerPolicy="no-referrer"
+                          />
+                          {msg.content !== '📷 صورة' && <span className="px-1">{msg.content}</span>}
                         </div>
                       ) : (
                         msg.content
                       )}
                     </div>
+                    
+                    {!isMine && (
+                      <button 
+                        onClick={() => setReportTarget(msg)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white/10 hover:text-red-400 hover:bg-red-500/10 transition-all mb-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">flag</span>
+                      </button>
+                    )}
                   </div>
-                </div>
+                  <span className="text-[9px] text-white/20 px-2 font-medium">
+                    {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </motion.div>
               );
             })}
 

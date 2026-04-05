@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
 interface BlockedUser {
@@ -81,85 +82,126 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen pb-24 overflow-x-hidden max-w-[390px] mx-auto relative bg-background">
+    <div className="flex flex-col min-h-[100dvh] max-w-[390px] mx-auto w-full relative bg-background overflow-hidden">
+      {/* Background Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+
       {/* Top AppBar */}
-      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6">
-        <button onClick={onBack} className="flex items-center justify-center text-white/70 hover:text-white transition-colors p-2 -mr-2">
-          <span className="material-symbols-outlined">arrow_forward</span>
-        </button>
-        <h1 className="font-bold text-lg text-white">الأمان والخصوصية</h1>
+      <header className="w-full top-0 sticky flex items-center justify-between px-6 h-20 bg-background/80 backdrop-blur-xl z-50 border-b border-white/5">
+        <div className="flex items-center">
+          <button onClick={onBack} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 border border-white/5 text-white">
+            <span className="material-symbols-outlined text-xl">arrow_forward</span>
+          </button>
+        </div>
+        <div className="flex flex-col items-center">
+          <h1 className="font-black text-sm text-white tracking-tight">الأمان والخصوصية</h1>
+          <span className="text-[9px] text-primary font-black uppercase tracking-[0.2em]">Privacy Center</span>
+        </div>
         <div className="w-10"></div>
       </header>
 
-      <main className="w-full px-6 space-y-10 flex-1">
+      <main className="flex-1 px-8 py-10 w-full flex flex-col relative z-10 overflow-y-auto custom-scrollbar">
         {loading ? (
-          <div className="flex justify-center py-10">
-            <span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full"
+            />
+            <span className="text-white/20 text-xs font-black uppercase tracking-widest">جاري التحميل</span>
           </div>
         ) : (
-          <>
+          <div className="space-y-12">
             {/* Two-Factor Authentication Section */}
-            <section className="space-y-4">
-              <h2 className="text-sm font-medium text-white/50 px-2">حماية الحساب</h2>
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <span className="material-symbols-outlined text-primary text-lg">shield_lock</span>
+                </div>
+                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">حماية الحساب</h2>
+              </div>
               
-              <div className="space-y-2">
-                <div className="flex justify-between items-center py-3 px-2">
-                  <div>
-                    <h3 className="text-sm font-medium text-white/90">المصادقة الثنائية (2FA)</h3>
-                    <p className="text-white/40 text-xs mt-1">أضف طبقة حماية إضافية لحسابك</p>
+              <div className="space-y-3">
+                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 flex justify-between items-center backdrop-blur-md">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-white tracking-tight">المصادقة الثنائية (2FA)</h3>
+                    <p className="text-white/40 text-[10px] font-bold leading-relaxed">أضف طبقة حماية إضافية لحسابك</p>
                   </div>
                   <button 
                     onClick={handleToggle2FA}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${is2FAEnabled ? 'bg-primary' : 'bg-white/10'}`}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all ${is2FAEnabled ? 'bg-primary shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-white/10'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${is2FAEnabled ? '-translate-x-6' : '-translate-x-1'}`} />
+                    <motion.span 
+                      animate={{ x: is2FAEnabled ? -24 : -4 }}
+                      className="inline-block h-5 w-5 rounded-full bg-white shadow-lg" 
+                    />
                   </button>
                 </div>
                 
-                <button className="w-full flex items-center justify-between py-4 px-2 text-white/80 hover:text-white hover:bg-white/5 rounded-2xl transition-all">
-                  <span className="font-medium text-sm">تغيير كلمة المرور</span>
-                  <span className="material-symbols-outlined text-white/40 text-sm rtl:rotate-180">chevron_right</span>
+                <button className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-5 flex items-center justify-between hover:bg-white/[0.05] transition-all group active:scale-[0.98]">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white transition-colors">
+                      <span className="material-symbols-outlined text-xl">key</span>
+                    </div>
+                    <span className="font-black text-xs text-white uppercase tracking-widest">تغيير كلمة المرور</span>
+                  </div>
+                  <span className="material-symbols-outlined text-white/20 text-lg rtl:rotate-180 group-hover:text-primary transition-colors">chevron_right</span>
                 </button>
               </div>
             </section>
 
             {/* Blocked Users Section */}
-            <section className="space-y-4">
-              <h2 className="text-sm font-medium text-white/50 px-2">المستخدمون المحظورون</h2>
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                  <span className="material-symbols-outlined text-red-400 text-lg">block</span>
+                </div>
+                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">المستخدمون المحظورون</h2>
+              </div>
               
-              <div className="min-h-[150px]">
+              <div className="min-h-[200px]">
                 {blockedUsers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-white/30">
-                    <span className="material-symbols-outlined text-3xl mb-2">no_accounts</span>
-                    <p className="text-xs">لا يوجد مستخدمين محظورين</p>
+                  <div className="flex flex-col items-center justify-center py-12 gap-4 bg-white/[0.02] border border-dashed border-white/5 rounded-3xl opacity-30">
+                    <span className="material-symbols-outlined text-4xl">person_off</span>
+                    <p className="text-[10px] font-black uppercase tracking-widest">لا يوجد مستخدمين محظورين</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-1">
+                  <div className="space-y-3">
                     {blockedUsers.map((user) => (
-                      <div key={user.blocked_id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-2xl transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-white/5 overflow-hidden flex items-center justify-center">
-                            {user.users.avatar_url ? (
-                              <img src={user.users.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="material-symbols-outlined text-white/40">person</span>
-                            )}
+                      <motion.div 
+                        key={user.blocked_id} 
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-md"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary/20 to-secondary/20 p-0.5">
+                            <div className="w-full h-full rounded-[14px] bg-background overflow-hidden flex items-center justify-center border border-white/5">
+                              {user.users.avatar_url ? (
+                                <img src={user.users.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="material-symbols-outlined text-white/10 text-2xl">person</span>
+                              )}
+                            </div>
                           </div>
-                          <span className="font-medium text-sm text-white/90">{user.users.username}</span>
+                          <div className="flex flex-col">
+                            <span className="font-black text-sm text-white tracking-tight">{user.users.username}</span>
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Blocked User</span>
+                          </div>
                         </div>
                         <button 
                           onClick={() => handleUnblock(user.blocked_id)}
-                          className="text-xs font-medium text-primary hover:text-primary-container transition-colors px-2"
+                          className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-primary/20 active:scale-95"
                         >
                           إلغاء الحظر
                         </button>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
               </div>
             </section>
-          </>
+          </div>
         )}
       </main>
     </div>
