@@ -24,7 +24,8 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
     const fetchChats = async () => {
       try {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
         if (!user) return;
 
         // Fetch chats where user is participant
@@ -130,7 +131,8 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
         },
         async (payload) => {
           const newChat = payload.new;
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
           if (!user) return;
 
           // Check if I am part of this new chat
@@ -167,28 +169,28 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
   }, []);
 
   return (
-    <div className="bg-background text-white min-h-screen flex flex-col items-center max-w-[390px] mx-auto relative overflow-x-hidden">
+    <div className="bg-background text-on-surface min-h-screen flex flex-col items-center max-w-[390px] mx-auto relative overflow-hidden">
       {/* Top Bar */}
-      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6 border-b border-white/5 bg-background/80 backdrop-blur-xl shrink-0">
+      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6 border-b border-outline-variant bg-background/90 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-full hover:bg-white/5 transition-colors text-white/70">
+          <button onClick={onBack} className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
             <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
           </button>
-          <h1 className="text-xl font-black text-white tracking-tight">المحادثات</h1>
+          <h1 className="text-xl font-bold tracking-tight">المحادثات</h1>
         </div>
-        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-          <span className="material-symbols-outlined text-white/40 text-xl">search</span>
+        <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+          <span className="material-symbols-outlined text-on-surface-variant text-xl">search</span>
         </div>
       </header>
 
-      <main className="w-full px-4 py-6 flex-grow overflow-y-auto no-scrollbar pb-32">
+      <main className="w-full px-4 py-6 flex-grow overflow-y-auto custom-scrollbar pb-32">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-            <p className="text-white/30 text-xs font-bold animate-pulse">جاري تحميل المحادثات...</p>
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            <p className="text-on-surface-variant text-sm font-medium animate-pulse">جاري تحميل المحادثات...</p>
           </div>
         ) : chats.length > 0 ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {chats.map((chat, idx) => (
               <motion.div
                 key={chat.id}
@@ -197,34 +199,30 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
                 transition={{ delay: idx * 0.05 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onChatSelect(chat.id)}
-                className="flex items-center gap-4 p-4 rounded-[2rem] bg-surface-container-high hover:bg-white/10 transition-all cursor-pointer border border-white/5 active:bg-white/5"
+                className="flex items-center gap-4 p-4 rounded-2xl bg-surface hover:bg-surface-container-high transition-all cursor-pointer border border-outline-variant active:bg-surface-container-highest"
               >
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-full p-[1.5px] bg-gradient-to-tr from-primary to-secondary">
-                    <div className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-white/10 flex items-center justify-center">
-                      {chat.other_user.avatar_url ? (
-                        <img src={chat.other_user.avatar_url} alt={chat.other_user.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="material-symbols-outlined text-white/30 text-3xl">person</span>
-                      )}
-                    </div>
+                  <div className="w-14 h-14 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden">
+                    {chat.other_user.avatar_url ? (
+                      <img src={chat.other_user.avatar_url} alt={chat.other_user.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-on-surface-variant text-2xl">person</span>
+                    )}
                   </div>
-                  <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-500 border-2 border-background"></div>
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-surface"></div>
                 </div>
                 
                 <div className="flex-grow min-w-0">
                   <div className="flex justify-between items-center mb-1">
-                    <h3 className="text-white font-black text-sm truncate tracking-tight">{chat.other_user.username}</h3>
-                    <span className="text-[10px] text-white/30 font-bold">
+                    <h3 className="text-on-surface font-bold text-base truncate tracking-tight">{chat.other_user.username}</h3>
+                    <span className="text-xs text-on-surface-variant font-medium">
                       {new Date(chat.last_message?.created_at || chat.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-white/50 truncate font-medium">
+                    <p className="text-sm text-on-surface-variant truncate">
                       {chat.last_message?.content || 'ابدأ المحادثة الآن...'}
                     </p>
-                    {/* Unread indicator placeholder */}
-                    <div className="w-2 h-2 rounded-full bg-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </div>
                 </div>
               </motion.div>
@@ -232,14 +230,14 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center px-10">
-            <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-8 border border-white/5">
-              <span className="material-symbols-outlined text-white/10 text-5xl">chat_bubble</span>
+            <div className="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-on-surface-variant text-4xl">chat_bubble</span>
             </div>
-            <h3 className="text-white font-black text-xl mb-3 tracking-tight">لا توجد محادثات</h3>
-            <p className="text-white/40 text-sm font-medium leading-relaxed">ابدأ بالبحث عن أشخاص جدد لتظهر محادثاتهم هنا وتبدأ التواصل</p>
+            <h3 className="text-on-surface font-bold text-lg mb-2 tracking-tight">لا توجد محادثات</h3>
+            <p className="text-on-surface-variant text-sm leading-relaxed">ابدأ بالبحث عن أشخاص جدد لتظهر محادثاتهم هنا وتبدأ التواصل</p>
             <button 
               onClick={() => onNav('home')}
-              className="mt-10 px-10 py-4 bg-gradient-to-tr from-primary to-secondary text-white rounded-2xl text-sm font-black shadow-xl shadow-primary/20 active:scale-95 transition-transform"
+              className="mt-8 px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold active:scale-95 transition-transform"
             >
               ابحث الآن
             </button>
@@ -248,30 +246,29 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
       </main>
 
       {/* Bottom Nav Bar */}
-      <nav className="fixed bottom-0 w-full max-w-[390px] z-50 bg-background/80 backdrop-blur-xl px-4 py-4 flex justify-around items-center border-t border-white/5">
+      <nav className="fixed bottom-0 w-full max-w-[390px] z-50 bg-surface/90 backdrop-blur-md px-4 py-3 flex justify-around items-center border-t border-outline-variant">
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={() => onNav('home')}
-          className="flex flex-col items-center justify-center text-white/40 px-5 py-2 hover:text-white transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-on-surface transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-2xl">home</span>
-          <span className="text-[10px] mt-1 font-bold tracking-widest uppercase">الرئيسية</span>
+          <span className="text-[10px] mt-1 font-medium">الرئيسية</span>
         </motion.button>
         <motion.button 
           whileTap={{ scale: 0.9 }}
           className="flex flex-col items-center justify-center text-primary px-5 py-2 relative"
         >
-          <div className="absolute -top-1 w-1 h-1 rounded-full bg-primary"></div>
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
-          <span className="text-[10px] mt-1 font-black tracking-widest uppercase">المحادثات</span>
+          <span className="text-[10px] mt-1 font-bold">المحادثات</span>
         </motion.button>
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={() => onNav('profile')}
-          className="flex flex-col items-center justify-center text-white/40 px-5 py-2 hover:text-white transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center text-on-surface-variant px-5 py-2 hover:text-on-surface transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-2xl">person</span>
-          <span className="text-[10px] mt-1 font-bold tracking-widest uppercase">الملف الشخصي</span>
+          <span className="text-[10px] mt-1 font-medium">الملف الشخصي</span>
         </motion.button>
       </nav>
     </div>

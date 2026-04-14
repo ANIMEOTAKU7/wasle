@@ -88,7 +88,8 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
     
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       
       if (user) {
         const userInterests = selected.map(interestId => ({
@@ -123,19 +124,19 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
   };
 
   return (
-    <div className="flex flex-col min-h-screen max-w-[390px] mx-auto relative overflow-hidden">
+    <div className="flex flex-col min-h-screen max-w-[390px] mx-auto relative overflow-hidden bg-background text-on-surface">
       {/* Top Navigation */}
-      <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 shrink-0 bg-background/80 backdrop-blur-xl border-b border-white/5">
+      <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 shrink-0 bg-background/90 backdrop-blur-md border-b border-outline-variant">
         <motion.button 
           aria-label="العودة"
           whileTap={{ scale: 0.9 }}
           onClick={onBack} 
-          className="flex items-center justify-center text-white/70 hover:text-white transition-colors p-2 -mr-2"
+          className="flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors p-2 -mr-2"
         >
           <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
         </motion.button>
-        <div className="text-lg font-black text-white tracking-tighter flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center">
+        <div className="text-lg font-bold tracking-tighter flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center">
             <div className="w-3 h-3 rounded-sm bg-white rotate-45"></div>
           </div>
           <span>واصل</span>
@@ -143,15 +144,15 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
         <div className="w-10"></div>
       </header>
 
-      <main className="flex-1 px-6 pt-10 pb-32 overflow-y-auto no-scrollbar">
+      <main className="flex-1 px-6 pt-8 pb-32 overflow-y-auto custom-scrollbar">
         {/* Progress Indicator */}
-        <div className="flex items-center gap-4 mb-10">
-          <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden flex" dir="ltr">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex-1 bg-surface-container-high h-1.5 rounded-full overflow-hidden flex" dir="ltr">
             <motion.div 
               initial={{ width: "0%" }}
               animate={{ width: "66%" }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="bg-gradient-to-r from-primary to-secondary h-full rounded-full"
+              className="bg-primary h-full rounded-full"
             />
           </div>
           <span className="text-[10px] font-bold text-primary tracking-widest uppercase">الخطوة 2/3</span>
@@ -161,60 +162,60 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
+          className="mb-8"
         >
-          <h1 className="text-3xl font-black text-white mb-3 leading-tight">ما الذي <span className="text-primary">يهمك؟</span></h1>
-          <p className="text-white/40 text-xs leading-relaxed font-medium">اختر من {APP_CONSTANTS.MIN_INTERESTS} إلى {APP_CONSTANTS.MAX_INTERESTS} اهتمامات لنجد لك أشخاصاً يشاركونك نفس الشغف</p>
+          <h1 className="text-2xl font-bold mb-2">ما الذي يهمك؟</h1>
+          <p className="text-on-surface-variant text-sm font-medium">اختر من {APP_CONSTANTS.MIN_INTERESTS} إلى {APP_CONSTANTS.MAX_INTERESTS} اهتمامات لنجد لك أشخاصاً يشاركونك نفس الشغف</p>
         </motion.div>
 
         {/* Interests Grid */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-            <p className="text-white/30 text-xs font-bold animate-pulse">جاري تحميل الاهتمامات...</p>
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
+            <p className="text-on-surface-variant text-xs font-bold">جاري تحميل الاهتمامات...</p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-3 mb-12">
+          <div className="flex flex-wrap gap-2 mb-10">
             {interests.map((interest, idx) => {
               const isSelected = selected.includes(interest.id);
               return (
-                <motion.div 
+                <motion.button 
                   key={interest.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.03 }}
+                  transition={{ delay: idx * 0.02 }}
                   onClick={() => toggleInterest(interest.id)}
                   whileTap={{ scale: 0.95 }}
-                  className={`rounded-2xl py-3 px-5 flex items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 border ${
+                  className={`rounded-xl py-2.5 px-4 flex items-center justify-center gap-2 transition-all duration-200 border ${
                     isSelected 
-                      ? 'bg-gradient-to-tr from-primary to-secondary text-white border-transparent shadow-lg shadow-primary/20 scale-105' 
-                      : 'bg-surface-container-high text-white/60 hover:text-white border-white/5 hover:border-white/20'
+                      ? 'bg-primary text-white border-transparent shadow-sm' 
+                      : 'bg-surface text-on-surface-variant hover:text-on-surface border-outline-variant hover:bg-surface-container-high'
                   }`}
                 >
-                  <span className="text-lg">{interest.icon}</span>
-                  <span className="text-xs font-bold whitespace-nowrap">{interest.name}</span>
-                </motion.div>
+                  <span className="text-base">{interest.icon}</span>
+                  <span className="text-sm font-medium whitespace-nowrap">{interest.name}</span>
+                </motion.button>
               );
             })}
           </div>
         )}
 
         {/* Counter Indicator */}
-        <div className="flex flex-col items-center justify-center gap-4 py-6 rounded-3xl bg-white/5 border border-white/5">
-          <div className="flex items-center gap-3">
-            <span className="text-white/40 font-bold text-[10px] uppercase tracking-widest">تم اختيار</span>
-            <span className={`text-lg font-black ${selected.length >= APP_CONSTANTS.MIN_INTERESTS ? 'text-primary' : 'text-white'}`}>
+        <div className="flex flex-col items-center justify-center gap-3 py-5 rounded-2xl bg-surface border border-outline-variant">
+          <div className="flex items-center gap-2">
+            <span className="text-on-surface-variant font-medium text-xs">تم اختيار</span>
+            <span className={`text-base font-bold ${selected.length >= APP_CONSTANTS.MIN_INTERESTS ? 'text-primary' : 'text-on-surface'}`}>
               {selected.length}
             </span>
-            <span className="text-white/20 font-bold text-[10px] uppercase tracking-widest">من {APP_CONSTANTS.MAX_INTERESTS}</span>
+            <span className="text-on-surface-variant font-medium text-xs">من {APP_CONSTANTS.MAX_INTERESTS}</span>
           </div>
           <div className="flex gap-1.5" dir="ltr">
             {[...Array(APP_CONSTANTS.MAX_INTERESTS)].map((_, i) => (
               <motion.div 
                 key={i} 
                 animate={{ 
-                  scale: i < selected.length ? 1.2 : 1,
-                  backgroundColor: i < selected.length ? "#7c3aed" : "rgba(255,255,255,0.1)"
+                  scale: i < selected.length ? 1.1 : 1,
+                  backgroundColor: i < selected.length ? "var(--color-primary)" : "var(--color-surface-container-highest)"
                 }}
                 className="w-2 h-2 rounded-full transition-colors duration-300"
               />
@@ -224,32 +225,28 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
       </main>
 
       {/* Bottom Navigation Shell */}
-      <footer className="fixed bottom-0 w-full max-w-[390px] z-50 bg-background/80 backdrop-blur-xl pt-6 pb-10 px-6 border-t border-white/5">
+      <footer className="fixed bottom-0 w-full max-w-[390px] z-50 bg-background/90 backdrop-blur-md pt-4 pb-8 px-6 border-t border-outline-variant">
         <motion.button 
-          whileHover={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 1.02, y: -2 } : {}}
+          whileHover={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 1.02 } : {}}
           whileTap={selected.length >= APP_CONSTANTS.MIN_INTERESTS ? { scale: 0.98 } : {}}
           onClick={selected.length >= APP_CONSTANTS.MIN_INTERESTS && !saving ? handleSaveInterests : undefined}
-          className={`w-full flex items-center justify-center rounded-2xl py-4.5 transition-all duration-300 group shadow-xl ${
+          className={`w-full flex items-center justify-center rounded-xl py-4 transition-all duration-200 group ${
             selected.length >= APP_CONSTANTS.MIN_INTERESTS 
-              ? 'bg-white text-black cursor-pointer shadow-white/10' 
-              : 'bg-white/5 text-white/20 cursor-not-allowed'
+              ? 'bg-primary text-white cursor-pointer shadow-md hover:bg-primary/90' 
+              : 'bg-surface-container-highest text-on-surface-variant cursor-not-allowed'
           }`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {saving ? (
               <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
             ) : (
               <>
-                <span className="font-black text-sm tracking-tight">حفظ والمتابعة</span>
+                <span className="font-bold text-sm">حفظ والمتابعة</span>
                 <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform rtl:rotate-180">arrow_forward</span>
               </>
             )}
           </div>
         </motion.button>
       </footer>
-
-      {/* Background Decorative Elements */}
-      <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary-container/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-40 -left-20 w-80 h-80 bg-secondary-container/5 rounded-full blur-[120px] pointer-events-none"></div>
     </div>
   );
 }

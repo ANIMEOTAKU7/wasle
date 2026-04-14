@@ -20,7 +20,8 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
     // Simulate finding a match and create a real chat in Supabase
     const findMatch = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
         if (!user) {
           console.error("User not authenticated");
           return;
@@ -129,20 +130,20 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
   };
 
   return (
-    <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden">
+    <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden text-on-surface">
       <main className="w-full max-w-[390px] h-[100dvh] relative flex flex-col bg-background overflow-hidden">
         {/* TopAppBar */}
-        <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 border-b border-white/5 bg-background/80 backdrop-blur-xl">
-          <button onClick={onCancel} className="text-white/40 hover:text-white transition-colors text-xs font-black uppercase tracking-widest">إلغاء</button>
+        <header className="w-full max-w-[390px] z-50 flex justify-between items-center px-6 py-6 border-b border-outline-variant bg-background/90 backdrop-blur-md">
+          <button onClick={onCancel} className="text-on-surface-variant hover:text-on-surface transition-colors text-xs font-bold uppercase tracking-widest">إلغاء</button>
           <div className="flex flex-col items-center">
-            <h1 className="text-white font-black text-sm tracking-tight">جاري البحث</h1>
-            <span className="text-[9px] text-primary font-black uppercase tracking-[0.2em] animate-pulse">Matching</span>
+            <h1 className="text-on-surface font-bold text-sm tracking-tight">جاري البحث</h1>
+            <span className="text-[9px] text-primary font-bold uppercase tracking-[0.2em] animate-pulse">Matching</span>
           </div>
           <div className="w-10 flex justify-end">
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20"
+              className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant"
             >
               <span className="material-symbols-outlined text-primary text-lg">explore</span>
             </motion.div>
@@ -169,45 +170,34 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
               />
             ))}
 
-            {/* Rotating Radar Sweep */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute w-72 h-72 rounded-full border border-primary/5 bg-gradient-to-tr from-primary/20 to-transparent"
-              style={{ clipPath: 'polygon(50% 50%, 100% 0, 100% 50%)' }}
-            />
-
             {/* User Avatar (Center) */}
             <div className="relative z-10">
-              <div className="absolute inset-0 bg-primary/30 blur-3xl rounded-full animate-pulse"></div>
               <motion.div 
-                animate={{ scale: [1, 1.1, 1] }}
+                animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary relative z-10 shadow-[0_0_50px_rgba(124,58,237,0.4)]"
+                className="w-28 h-28 rounded-full bg-surface-container-highest relative z-10 shadow-lg border-4 border-background overflow-hidden flex items-center justify-center"
               >
-                <div className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container-high flex items-center justify-center">
-                  <span className="material-symbols-outlined text-5xl text-white/20">person</span>
-                </div>
+                <span className="material-symbols-outlined text-5xl text-on-surface-variant">person</span>
               </motion.div>
             </div>
 
             {/* Floating "Potential Matches" dots */}
-            {[...Array(8)].map((_, i) => (
+            {[...Array(6)].map((_, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0 }}
                 animate={{ 
                   opacity: [0, 1, 0],
-                  scale: [0.5, 1.2, 0.5],
-                  x: Math.sin(i * 45 * (Math.PI / 180)) * 140,
-                  y: Math.cos(i * 45 * (Math.PI / 180)) * 140
+                  scale: [0.5, 1, 0.5],
+                  x: Math.sin(i * 60 * (Math.PI / 180)) * 120,
+                  y: Math.cos(i * 60 * (Math.PI / 180)) * 120
                 }}
                 transition={{
                   duration: 3 + Math.random() * 2,
                   repeat: Infinity,
                   delay: Math.random() * 5
                 }}
-                className="absolute w-2.5 h-2.5 bg-primary rounded-full blur-[1px] shadow-[0_0_10px_#7c3aed]"
+                className="absolute w-2 h-2 bg-primary rounded-full"
               />
             ))}
           </div>
@@ -219,16 +209,16 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
               animate={{ opacity: 1, y: 0 }}
               className="space-y-2"
             >
-              <h2 className="text-2xl font-black text-white tracking-tight">نبحث عن <span className="text-primary">شريكك</span> المثالي</h2>
-              <p className="text-white/40 text-xs font-bold leading-relaxed">نقوم الآن بتحليل اهتماماتك للعثور على شخص يشاركك نفس الشغف</p>
+              <h2 className="text-2xl font-bold text-on-surface tracking-tight">نبحث عن <span className="text-primary">شريكك</span> المثالي</h2>
+              <p className="text-on-surface-variant text-sm font-medium leading-relaxed">نقوم الآن بتحليل اهتماماتك للعثور على شخص يشاركك نفس الشغف</p>
             </motion.div>
             
             <div className="flex justify-center gap-1.5">
               {[0, 1, 2].map(i => (
                 <motion.div
                   key={i}
-                  animate={{ opacity: [0.2, 1, 0.2] }}
-                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
                   className="w-1.5 h-1.5 rounded-full bg-primary"
                 />
               ))}
@@ -237,16 +227,16 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
         </section>
 
         {/* Bottom Controls */}
-        <footer className="p-8 pb-12 space-y-6 z-10 border-t border-white/5 bg-background/80 backdrop-blur-xl">
+        <footer className="p-8 pb-12 space-y-6 z-10 border-t border-outline-variant bg-background/90 backdrop-blur-md">
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">وقت الانتظار</span>
-            <div className="font-mono text-xl font-black text-white tracking-widest" dir="ltr">
+            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">وقت الانتظار</span>
+            <div className="font-mono text-xl font-bold text-on-surface tracking-widest" dir="ltr">
               {formatTime(seconds)}
             </div>
           </div>
           <button 
             onClick={onCancel} 
-            className="w-full py-5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-black uppercase tracking-widest rounded-2xl transition-all border border-white/5 active:scale-95"
+            className="w-full py-4 bg-surface hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-sm font-bold rounded-xl transition-all border border-outline-variant active:scale-95"
           >
             إلغاء البحث والعودة
           </button>

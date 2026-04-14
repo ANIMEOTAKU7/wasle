@@ -22,7 +22,8 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
 
   const loadProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (user) {
         const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
         setProfile(profileData);
@@ -64,7 +65,8 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (user) {
         const { error } = await supabase
           .from('profiles')
@@ -98,7 +100,8 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       
       if (!user) throw new Error('User not authenticated');
       
@@ -146,41 +149,39 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
   }
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen pb-32 overflow-x-hidden max-w-[390px] mx-auto relative bg-background">
+    <div className="flex flex-col items-center justify-start min-h-screen pb-32 overflow-x-hidden max-w-[390px] mx-auto relative bg-background text-on-surface">
       {/* Top Bar */}
-      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6 border-b border-white/5 bg-background/80 backdrop-blur-xl shrink-0">
-        <h1 className="text-xl font-black text-white tracking-tight">الملف الشخصي</h1>
+      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6 border-b border-outline-variant bg-background/90 backdrop-blur-md shrink-0">
+        <h1 className="text-xl font-bold tracking-tight">الملف الشخصي</h1>
         <button 
           onClick={() => onNav('security')}
-          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all"
+          className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all"
         >
           <span className="material-symbols-outlined text-xl">settings</span>
         </button>
       </header>
 
-      <main className="w-full pt-8 px-6 space-y-8 flex-1 overflow-y-auto no-scrollbar">
+      <main className="w-full pt-8 px-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
         {/* Avatar Section */}
         <section className="flex flex-col items-center space-y-6">
           <div className="relative group">
-            <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary shadow-2xl shadow-primary/20">
-              <div className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-surface-container-highest flex items-center justify-center">
-                {uploadingAvatar ? (
-                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                ) : profile?.avatar_url ? (
-                  <img alt="User Profile" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" src={profile.avatar_url} referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="material-symbols-outlined text-5xl text-white/20">person</span>
-                )}
-              </div>
+            <div className="w-32 h-32 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border-4 border-background shadow-sm">
+              {uploadingAvatar ? (
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              ) : profile?.avatar_url ? (
+                <img alt="User Profile" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src={profile.avatar_url} referrerPolicy="no-referrer" />
+              ) : (
+                <span className="material-symbols-outlined text-5xl text-on-surface-variant">person</span>
+              )}
             </div>
             
             {/* Upload Button */}
             <button 
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="absolute bottom-1 right-1 w-10 h-10 bg-white text-black rounded-full flex items-center justify-center shadow-xl hover:scale-110 active:scale-90 transition-all border-4 border-background"
+              className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 active:scale-95 transition-all border-4 border-background"
             >
-              <span className="material-symbols-outlined text-[18px] font-bold">photo_camera</span>
+              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
             </button>
             <input 
               type="file" 
@@ -196,39 +197,39 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4 w-full bg-white/5 p-6 rounded-[2.5rem] border border-white/5"
+                className="space-y-4 w-full bg-surface p-6 rounded-3xl border border-outline-variant"
               >
                 <div className="space-y-1 text-right">
-                  <label className="text-[10px] font-black text-primary uppercase tracking-widest px-2">الاسم المستعار</label>
+                  <label className="text-xs font-medium text-on-surface-variant px-1">الاسم المستعار</label>
                   <input 
                     type="text" 
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="الاسم المستعار"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm focus:outline-none focus:border-primary transition-all font-bold"
+                    className="w-full bg-surface-container-high border border-outline-variant rounded-xl px-4 py-3 text-on-surface text-sm focus:outline-none focus:border-primary transition-all font-medium"
                   />
                 </div>
                 <div className="space-y-1 text-right">
-                  <label className="text-[10px] font-black text-primary uppercase tracking-widest px-2">النبذة الشخصية</label>
+                  <label className="text-xs font-medium text-on-surface-variant px-1">النبذة الشخصية</label>
                   <textarea 
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value)}
                     placeholder="نبذة قصيرة عنك تظهر للآخرين..."
                     rows={3}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white text-sm focus:outline-none focus:border-primary transition-all resize-none font-medium leading-relaxed"
+                    className="w-full bg-surface-container-high border border-outline-variant rounded-xl px-4 py-3 text-on-surface text-sm focus:outline-none focus:border-primary transition-all resize-none font-medium leading-relaxed"
                   />
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => setIsEditing(false)}
-                    className="flex-1 py-3.5 rounded-2xl text-white/40 hover:text-white text-xs font-black uppercase tracking-widest transition-all"
+                    className="flex-1 py-3 rounded-xl text-on-surface-variant hover:text-on-surface text-sm font-bold transition-all bg-surface-container-high"
                   >
                     إلغاء
                   </button>
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className="flex-[2] py-3.5 bg-white text-black hover:bg-white/90 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-white/5 flex items-center justify-center gap-2"
+                    className="flex-[2] py-3 bg-primary text-white hover:bg-primary/90 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                   >
                     {isSaving ? <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span> : 'حفظ التغييرات'}
                   </button>
@@ -236,12 +237,12 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
               </motion.div>
             ) : (
               <div className="space-y-2">
-                <h2 className="text-2xl font-black text-white tracking-tight">{profile?.display_name || 'مستخدم مجهول'}</h2>
-                <p className="text-white/40 text-sm font-medium max-w-[280px] mx-auto leading-relaxed">
+                <h2 className="text-2xl font-bold text-on-surface tracking-tight">{profile?.display_name || 'مستخدم مجهول'}</h2>
+                <p className="text-on-surface-variant text-sm font-medium max-w-[280px] mx-auto leading-relaxed">
                   {profile?.bio || 'لا توجد نبذة شخصية حتى الآن. أضف شيئاً عن نفسك!'}
                 </p>
                 <div className="pt-2 flex items-center justify-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-white/5 text-[9px] font-black text-white/30 uppercase tracking-widest border border-white/5">
+                  <span className="px-3 py-1 rounded-full bg-surface-container-high text-xs font-medium text-on-surface-variant border border-outline-variant">
                     {profile?.created_at ? `عضو منذ ${new Date(profile.created_at).getFullYear()}` : 'عضو جديد'}
                   </span>
                 </div>
@@ -251,15 +252,15 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
         </section>
 
         {/* Interests Section */}
-        <section className="space-y-5 bg-surface-container-high p-6 rounded-[2.5rem] border border-white/5 shadow-xl">
+        <section className="space-y-4 bg-surface p-6 rounded-3xl border border-outline-variant">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-lg">favorite</span>
-              <h3 className="text-xs font-black text-white/90 uppercase tracking-widest">الاهتمامات</h3>
+              <h3 className="text-sm font-bold text-on-surface">الاهتمامات</h3>
             </div>
             <button 
               onClick={() => onNav('interests')} 
-              className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-primary hover:bg-primary/10 transition-all"
+              className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-primary hover:bg-primary/10 transition-all"
             >
               <span className="material-symbols-outlined text-sm">edit</span>
             </button>
@@ -272,15 +273,15 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="bg-white/5 border border-white/5 px-4 py-2 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all"
+                  className="bg-surface-container-high border border-outline-variant px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-surface-container-highest transition-all"
                 >
                   <span className="text-base">{interest.icon}</span>
-                  <span className="text-[11px] font-bold text-white/70">{interest.name}</span>
+                  <span className="text-xs font-medium text-on-surface">{interest.name}</span>
                 </motion.div>
               ))
             ) : (
               <div className="w-full py-4 text-center">
-                <p className="text-xs text-white/20 font-bold italic">لم تقم بإضافة اهتمامات بعد.</p>
+                <p className="text-sm text-on-surface-variant font-medium italic">لم تقم بإضافة اهتمامات بعد.</p>
               </div>
             )}
           </div>
@@ -291,58 +292,65 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
           {!isEditing && (
             <button 
               onClick={() => setIsEditing(true)}
-              className="w-full flex items-center justify-between py-5 px-6 text-white/80 hover:text-white bg-white/5 hover:bg-white/10 rounded-[2rem] transition-all border border-white/5 group"
+              className="w-full flex items-center justify-between py-4 px-5 text-on-surface-variant hover:text-on-surface bg-surface hover:bg-surface-container-high rounded-2xl transition-all border border-outline-variant group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
                   <span className="material-symbols-outlined text-xl">edit_note</span>
                 </div>
-                <span className="font-black text-xs uppercase tracking-widest">تعديل الملف الشخصي</span>
+                <span className="font-bold text-sm">تعديل الملف الشخصي</span>
               </div>
-              <span className="material-symbols-outlined text-white/20 group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
+              <span className="material-symbols-outlined text-on-surface-variant group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
             </button>
           )}
           
           <button 
             onClick={handleLogout} 
-            className="w-full flex items-center justify-between py-5 px-6 text-red-400 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 rounded-[2rem] transition-all border border-red-500/10 group"
+            className="w-full flex items-center justify-between py-4 px-5 text-error hover:text-error/80 bg-error/5 hover:bg-error/10 rounded-2xl transition-all border border-error/10 group"
           >
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-xl">logout</span>
               </div>
-              <span className="font-black text-xs uppercase tracking-widest">تسجيل الخروج</span>
+              <span className="font-bold text-sm">تسجيل الخروج</span>
             </div>
-            <span className="material-symbols-outlined text-red-500/20 group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
+            <span className="material-symbols-outlined text-error/50 group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
           </button>
         </section>
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 w-full max-w-[390px] z-50 flex justify-around items-center px-4 py-4 bg-background/80 backdrop-blur-xl border-t border-white/5">
+      <nav className="fixed bottom-0 w-full max-w-[390px] z-50 flex justify-around items-center px-2 py-3 bg-surface/90 backdrop-blur-md border-t border-outline-variant">
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={() => onNav('home')}
-          className="flex flex-col items-center justify-center text-white/40 px-5 py-2 hover:text-white transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:text-on-surface transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-2xl">home</span>
-          <span className="text-[10px] mt-1 font-bold tracking-widest uppercase">الرئيسية</span>
+          <span className="text-[10px] mt-1 font-medium">الرئيسية</span>
+        </motion.button>
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onNav('snippets')}
+          className="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:text-on-surface transition-all cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-2xl">dynamic_feed</span>
+          <span className="text-[10px] mt-1 font-medium">المقتطفات</span>
         </motion.button>
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={() => onNav('chats')}
-          className="flex flex-col items-center justify-center text-white/40 px-5 py-2 hover:text-white transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:text-on-surface transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-2xl">chat_bubble</span>
-          <span className="text-[10px] mt-1 font-bold tracking-widest uppercase">المحادثات</span>
+          <span className="text-[10px] mt-1 font-medium">المحادثات</span>
         </motion.button>
         <motion.button 
           whileTap={{ scale: 0.9 }}
-          className="flex flex-col items-center justify-center text-primary px-5 py-2 relative"
+          className="flex flex-col items-center justify-center text-primary px-3 py-2 relative"
         >
-          <div className="absolute -top-1 w-1 h-1 rounded-full bg-primary"></div>
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-          <span className="text-[10px] mt-1 font-black tracking-widest uppercase">الملف الشخصي</span>
+          <span className="text-[10px] mt-1 font-bold">الملف الشخصي</span>
         </motion.button>
       </nav>
     </div>

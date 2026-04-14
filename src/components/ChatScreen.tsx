@@ -31,7 +31,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     let pollInterval: any = null;
 
     const setupChat = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user || !isMounted) return;
       setCurrentUserId(user.id);
 
@@ -229,7 +230,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     setIsSubmittingReport(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
       // If it's dummy data, just simulate a successful network request
       if (reportTarget === 'chat' || (reportTarget.id && String(reportTarget.id).startsWith('msg-'))) {
@@ -288,26 +290,24 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
   };
 
   return (
-    <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden">
+    <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden text-on-surface">
       <main className="w-full max-w-[390px] h-[100dvh] flex flex-col relative overflow-hidden bg-background">
         {/* Header */}
-        <header className="w-full z-50 flex justify-between items-center px-6 py-5 shrink-0 border-b border-white/5 bg-background/80 backdrop-blur-xl">
+        <header className="w-full z-50 flex justify-between items-center px-6 py-5 shrink-0 border-b border-outline-variant bg-background/90 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="text-white/70 hover:text-white transition-colors p-2 -mr-2">
+            <button onClick={onBack} className="text-on-surface-variant hover:text-on-surface transition-colors p-2 -mr-2">
               <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-primary to-secondary">
-                <div className="w-full h-full rounded-full border-2 border-background overflow-hidden bg-surface-container-high flex items-center justify-center">
-                  {otherUserProfile?.avatar_url ? (
-                    <img src={otherUserProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="material-symbols-outlined text-white/30 text-xl">person</span>
-                  )}
-                </div>
+              <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+                {otherUserProfile?.avatar_url ? (
+                  <img src={otherUserProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-on-surface-variant text-xl">person</span>
+                )}
               </div>
               <div className="flex flex-col">
-                <h1 className="text-white text-sm font-bold">{otherUserProfile?.username || 'مستخدم مجهول'}</h1>
+                <h1 className="text-on-surface text-sm font-bold">{otherUserProfile?.username || 'مستخدم مجهول'}</h1>
                 <span className="text-primary text-[10px] font-bold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
                   نشط الآن
@@ -318,7 +318,7 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setReportTarget('chat')}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
               title="إبلاغ"
             >
               <span className="material-symbols-outlined text-lg">flag</span>
@@ -327,20 +327,20 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
         </header>
 
         {/* Main Content Canvas */}
-        <section className="flex-1 px-4 overflow-y-auto no-scrollbar flex flex-col gap-4 py-4 chat-scroll">
+        <section className="flex-1 px-4 overflow-y-auto custom-scrollbar flex flex-col gap-4 py-4">
           {/* Ice Breaker Card */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full rounded-3xl bg-white/5 p-6 flex flex-col items-center text-center gap-3 border border-white/5 mb-4"
+            className="w-full rounded-2xl bg-surface p-6 flex flex-col items-center text-center gap-3 border border-outline-variant mb-4"
           >
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-1">
-              <span className="material-symbols-outlined text-primary text-3xl">auto_awesome</span>
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+              <span className="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
             </div>
-            <p className="text-white font-bold text-sm">
+            <p className="text-on-surface font-bold text-sm">
               {otherUserProfile?.bio ? `"${otherUserProfile.bio}"` : 'ابدأ المحادثة بشيء مميز!'}
             </p>
-            <p className="text-white/40 text-[10px] font-medium">
+            <p className="text-on-surface-variant text-[10px] font-medium">
               {otherUserProfile?.bio ? 'نبذة عن المستخدم' : 'نصيحة لكسر الجليد'}
             </p>
           </motion.div>
@@ -349,14 +349,14 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
           <div className="flex flex-col gap-3 flex-1">
             {messages.length > 0 && (
               <div className="flex justify-center my-4">
-                <span className="px-3 py-1 rounded-full bg-white/5 text-[10px] text-white/30 font-bold uppercase tracking-wider">اليوم</span>
+                <span className="px-3 py-1 rounded-full bg-surface-container-high text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">اليوم</span>
               </div>
             )}
 
             {messages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-30 mt-10">
-                <span className="material-symbols-outlined text-6xl">chat_bubble</span>
-                <p className="text-sm font-bold">لا توجد رسائل بعد</p>
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-50 mt-10">
+                <span className="material-symbols-outlined text-6xl text-on-surface-variant">chat_bubble</span>
+                <p className="text-sm font-bold text-on-surface-variant">لا توجد رسائل بعد</p>
               </div>
             )}
 
@@ -372,8 +372,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                   <div className={`flex items-end gap-2 max-w-[85%] ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                     <div className={`px-4 py-3 rounded-2xl text-sm shadow-sm ${
                       isMine 
-                        ? 'bg-gradient-to-br from-primary to-secondary text-white rounded-br-none' 
-                        : 'bg-surface-container-high text-white/90 rounded-bl-none border border-white/5'
+                        ? 'bg-primary text-white rounded-br-none' 
+                        : 'bg-surface-container-high text-on-surface rounded-bl-none border border-outline-variant'
                     }`}>
                       {msg.image_url ? (
                         <div className="flex flex-col gap-2">
@@ -394,13 +394,13 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                     {!isMine && (
                       <button 
                         onClick={() => setReportTarget(msg)}
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white/10 hover:text-red-400 hover:bg-red-500/10 transition-all mb-1"
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-all mb-1"
                       >
                         <span className="material-symbols-outlined text-sm">flag</span>
                       </button>
                     )}
                   </div>
-                  <span className="text-[9px] text-white/20 px-2 font-medium">
+                  <span className="text-[9px] text-on-surface-variant px-2 font-medium">
                     {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </motion.div>
@@ -416,10 +416,10 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="flex items-start gap-1"
                 >
-                  <div className="px-4 py-3 rounded-2xl rounded-tr-sm bg-white/5 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <div className="px-4 py-3 rounded-2xl rounded-tr-sm bg-surface-container-high flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-on-surface-variant rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-on-surface-variant rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-on-surface-variant rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                   </div>
                 </motion.div>
               )}
@@ -430,15 +430,15 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
         </section>
 
         {/* Bottom Action Layer */}
-        <footer className="w-full px-6 py-4 pb-8 shrink-0 bg-background">
+        <footer className="w-full px-6 py-4 pb-8 shrink-0 bg-background border-t border-outline-variant">
           <div className="flex justify-center mb-4">
-            <button onClick={onBack} className="text-white/40 hover:text-white text-xs flex items-center gap-1.5 transition-colors">
+            <button onClick={onBack} className="text-on-surface-variant hover:text-on-surface text-xs flex items-center gap-1.5 transition-colors font-medium">
               <span className="material-symbols-outlined text-[14px]">shuffle</span>
               <span>تخطي ومحادثة شخص آخر</span>
             </button>
           </div>
 
-          <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2 bg-white/5 rounded-full p-1 pr-2 border border-white/5 focus-within:border-white/20 transition-colors">
+          <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2 bg-surface rounded-full p-1 pr-2 border border-outline-variant focus-within:border-primary/50 transition-colors">
             <input 
               type="file" 
               accept="image/*" 
@@ -450,7 +450,7 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || !chatId}
-              className="p-2 text-white/50 hover:text-white transition-colors disabled:opacity-50 shrink-0"
+              className="p-2 text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50 shrink-0"
               title="إرفاق صورة"
             >
               {isUploading ? (
@@ -460,7 +460,7 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
               )}
             </button>
             <input 
-              className="flex-1 bg-transparent border-none text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-0 py-3 px-2" 
+              className="flex-1 bg-transparent border-none text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-0 py-3 px-2" 
               placeholder="اكتب رسالة..." 
               type="text" 
               value={inputText}
@@ -490,19 +490,19 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#1a1d24] w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4 border border-white/10 shadow-2xl"
+                className="bg-surface w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4 border border-outline-variant shadow-2xl"
               >
-                <h3 className="text-white font-bold text-lg">
+                <h3 className="text-on-surface font-bold text-lg">
                   {reportTarget === 'chat' ? 'الإبلاغ عن المستخدم' : 'الإبلاغ عن رسالة'}
                 </h3>
-                <p className="text-white/50 text-sm">لماذا تريد الإبلاغ؟ لن يتم إعلام الشخص الآخر.</p>
+                <p className="text-on-surface-variant text-sm">لماذا تريد الإبلاغ؟ لن يتم إعلام الشخص الآخر.</p>
                 
                 <div className="flex flex-col gap-2 mt-2">
                   {['محتوى غير لائق', 'إزعاج أو بريد مزعج', 'مضايقة أو تنمر', 'أخرى'].map(reason => (
                     <button
                       key={reason}
                       onClick={() => setReportReason(reason)}
-                      className={`px-4 py-3 rounded-xl text-sm text-right transition-colors ${reportReason === reason ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/5 text-white/70 hover:bg-white/10 border border-transparent'}`}
+                      className={`px-4 py-3 rounded-xl text-sm text-right transition-colors ${reportReason === reason ? 'bg-error/10 text-error border border-error/20' : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest border border-transparent'}`}
                     >
                       {reason}
                     </button>
@@ -515,14 +515,14 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
                       setReportTarget(null);
                       setReportReason('');
                     }}
-                    className="flex-1 py-3 text-white/50 hover:text-white text-sm font-medium transition-colors"
+                    className="flex-1 py-3 text-on-surface-variant hover:text-on-surface text-sm font-medium transition-colors"
                   >
                     إلغاء
                   </button>
                   <button 
                     onClick={handleReport}
                     disabled={!reportReason || isSubmittingReport}
-                    className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors flex justify-center items-center"
+                    className="flex-1 py-3 bg-error hover:bg-error/90 disabled:opacity-50 disabled:hover:bg-error text-white text-sm font-medium rounded-xl transition-colors flex justify-center items-center"
                   >
                     {isSubmittingReport ? (
                       <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
@@ -543,10 +543,10 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-[#1a1d24] border border-white/10 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50"
+              className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-surface-container-highest border border-outline-variant text-on-surface px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50"
             >
-              <span className="material-symbols-outlined text-green-400 text-[18px]">check_circle</span>
-              <span className="text-sm whitespace-nowrap">تم إرسال البلاغ بنجاح</span>
+              <span className="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+              <span className="text-sm font-medium whitespace-nowrap">تم إرسال البلاغ بنجاح</span>
             </motion.div>
           )}
         </AnimatePresence>

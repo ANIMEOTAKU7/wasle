@@ -22,7 +22,8 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
   const fetchSecurityData = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       // Check MFA status
@@ -65,7 +66,8 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
 
   const handleUnblock = async (blockedId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const { error } = await supabase
@@ -82,20 +84,17 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] max-w-[390px] mx-auto w-full relative bg-background overflow-hidden">
-      {/* Background Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
-
+    <div className="flex flex-col min-h-[100dvh] max-w-[390px] mx-auto w-full relative bg-background overflow-hidden text-on-surface">
       {/* Top AppBar */}
-      <header className="w-full top-0 sticky flex items-center justify-between px-6 h-20 bg-background/80 backdrop-blur-xl z-50 border-b border-white/5">
+      <header className="w-full top-0 sticky flex items-center justify-between px-6 h-20 bg-background/90 backdrop-blur-md z-50 border-b border-outline-variant">
         <div className="flex items-center">
-          <button onClick={onBack} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 border border-white/5 text-white">
+          <button onClick={onBack} className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center hover:bg-surface-container-highest transition-all active:scale-95 border border-outline-variant text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined text-xl">arrow_forward</span>
           </button>
         </div>
         <div className="flex flex-col items-center">
-          <h1 className="font-black text-sm text-white tracking-tight">الأمان والخصوصية</h1>
-          <span className="text-[9px] text-primary font-black uppercase tracking-[0.2em]">Privacy Center</span>
+          <h1 className="font-bold text-sm text-on-surface tracking-tight">الأمان والخصوصية</h1>
+          <span className="text-[9px] text-primary font-bold uppercase tracking-[0.2em]">Privacy Center</span>
         </div>
         <div className="w-10"></div>
       </header>
@@ -108,7 +107,7 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full"
             />
-            <span className="text-white/20 text-xs font-black uppercase tracking-widest">جاري التحميل</span>
+            <span className="text-on-surface-variant text-xs font-bold uppercase tracking-widest">جاري التحميل</span>
           </div>
         ) : (
           <div className="space-y-12">
@@ -118,34 +117,34 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                   <span className="material-symbols-outlined text-primary text-lg">shield_lock</span>
                 </div>
-                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">حماية الحساب</h2>
+                <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">حماية الحساب</h2>
               </div>
               
               <div className="space-y-3">
-                <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-5 flex justify-between items-center backdrop-blur-md">
+                <div className="bg-surface border border-outline-variant rounded-2xl p-5 flex justify-between items-center">
                   <div className="space-y-1">
-                    <h3 className="text-sm font-black text-white tracking-tight">المصادقة الثنائية (2FA)</h3>
-                    <p className="text-white/40 text-[10px] font-bold leading-relaxed">أضف طبقة حماية إضافية لحسابك</p>
+                    <h3 className="text-sm font-bold text-on-surface tracking-tight">المصادقة الثنائية (2FA)</h3>
+                    <p className="text-on-surface-variant text-[10px] font-medium leading-relaxed">أضف طبقة حماية إضافية لحسابك</p>
                   </div>
                   <button 
                     onClick={handleToggle2FA}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all ${is2FAEnabled ? 'bg-primary shadow-[0_0_15px_rgba(124,58,237,0.4)]' : 'bg-white/10'}`}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all ${is2FAEnabled ? 'bg-primary' : 'bg-surface-container-highest'}`}
                   >
                     <motion.span 
                       animate={{ x: is2FAEnabled ? -24 : -4 }}
-                      className="inline-block h-5 w-5 rounded-full bg-white shadow-lg" 
+                      className="inline-block h-5 w-5 rounded-full bg-white shadow-sm" 
                     />
                   </button>
                 </div>
                 
-                <button className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-5 flex items-center justify-between hover:bg-white/[0.05] transition-all group active:scale-[0.98]">
+                <button className="w-full bg-surface border border-outline-variant rounded-2xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-all group active:scale-[0.98]">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant group-hover:text-on-surface transition-colors">
                       <span className="material-symbols-outlined text-xl">key</span>
                     </div>
-                    <span className="font-black text-xs text-white uppercase tracking-widest">تغيير كلمة المرور</span>
+                    <span className="font-bold text-xs text-on-surface uppercase tracking-widest">تغيير كلمة المرور</span>
                   </div>
-                  <span className="material-symbols-outlined text-white/20 text-lg rtl:rotate-180 group-hover:text-primary transition-colors">chevron_right</span>
+                  <span className="material-symbols-outlined text-on-surface-variant text-lg rtl:rotate-180 group-hover:text-primary transition-colors">chevron_right</span>
                 </button>
               </div>
             </section>
@@ -153,17 +152,17 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
             {/* Blocked Users Section */}
             <section className="space-y-6">
               <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                  <span className="material-symbols-outlined text-red-400 text-lg">block</span>
+                <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center border border-error/20">
+                  <span className="material-symbols-outlined text-error text-lg">block</span>
                 </div>
-                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">المستخدمون المحظورون</h2>
+                <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">المستخدمون المحظورون</h2>
               </div>
               
               <div className="min-h-[200px]">
                 {blockedUsers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-4 bg-white/[0.02] border border-dashed border-white/5 rounded-3xl opacity-30">
-                    <span className="material-symbols-outlined text-4xl">person_off</span>
-                    <p className="text-[10px] font-black uppercase tracking-widest">لا يوجد مستخدمين محظورين</p>
+                  <div className="flex flex-col items-center justify-center py-12 gap-4 bg-surface-container-low border border-dashed border-outline-variant rounded-3xl opacity-50">
+                    <span className="material-symbols-outlined text-4xl text-on-surface-variant">person_off</span>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">لا يوجد مستخدمين محظورين</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -172,26 +171,24 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
                         key={user.blocked_id} 
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-2xl backdrop-blur-md"
+                        className="flex items-center justify-between p-4 bg-surface border border-outline-variant rounded-2xl"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary/20 to-secondary/20 p-0.5">
-                            <div className="w-full h-full rounded-[14px] bg-background overflow-hidden flex items-center justify-center border border-white/5">
-                              {user.users.avatar_url ? (
-                                <img src={user.users.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="material-symbols-outlined text-white/10 text-2xl">person</span>
-                              )}
-                            </div>
+                          <div className="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center overflow-hidden">
+                            {user.users.avatar_url ? (
+                              <img src={user.users.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="material-symbols-outlined text-on-surface-variant text-2xl">person</span>
+                            )}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-black text-sm text-white tracking-tight">{user.users.username}</span>
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Blocked User</span>
+                            <span className="font-bold text-sm text-on-surface tracking-tight">{user.users.username}</span>
+                            <span className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Blocked User</span>
                           </div>
                         </div>
                         <button 
                           onClick={() => handleUnblock(user.blocked_id)}
-                          className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-primary/20 active:scale-95"
+                          className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border border-primary/20 active:scale-95"
                         >
                           إلغاء الحظر
                         </button>

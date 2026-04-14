@@ -11,6 +11,7 @@ import ProfileScreen from './components/ProfileScreen';
 import SecurityScreen from './components/SecurityScreen';
 import AdminDashboard from './components/AdminDashboard';
 import ChatsListScreen from './components/ChatsListScreen';
+import SnippetsScreen from './components/SnippetsScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('landing');
@@ -46,6 +47,12 @@ export default function App() {
         return (
           <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <HomeScreen onSearch={() => setCurrentScreen('matching')} onNav={setCurrentScreen} />
+          </motion.div>
+        );
+      case 'snippets':
+        return (
+          <motion.div key="snippets" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <SnippetsScreen onNav={setCurrentScreen} />
           </motion.div>
         );
       case 'matching':
