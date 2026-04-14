@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { APP_CONSTANTS } from '../constants';
 import { supabase } from '../lib/supabase';
 
+import { sendNotification } from '../lib/notifications';
+
 export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => void, onMatch: (chatId: string) => void }) {
   const [seconds, setSeconds] = useState(0);
   const onMatchRef = useRef(onMatch);
@@ -94,6 +96,18 @@ export default function MatchingScreen({ onCancel, onMatch }: { onCancel: () => 
 
             if (insertError) throw insertError;
             if (newChat) {
+              // Send notification to the other user
+              const { data: myProfile } = await supabase.from('profiles').select('display_name, username').eq('id', user.id).single();
+              const myName = myProfile?.display_name || myProfile?.username || 'مستخدم جديد';
+              
+              await sendNotification(
+                otherUserId,
+                'match',
+                `لديك تطابق جديد مع ${myName}! ابدأ المحادثة الآن.`,
+                user.id,
+                { chat_id: newChat.id }
+              );
+
               onMatchRef.current(newChat.id);
             }
           } else {

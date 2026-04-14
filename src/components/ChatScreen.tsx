@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { encryptMessage, decryptMessage } from '../lib/crypto';
+
+import { sendNotification } from '../lib/notifications';
 
 export default function ChatScreen({ chatId, onBack }: { chatId: string | null, onBack: () => void }) {
   const [messages, setMessages] = useState<any[]>([]);
@@ -27,7 +30,6 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
   useEffect(() => {
     let isMounted = true;
-    let subscription: any = null;
     let pollInterval: any = null;
 
     const setupChat = async () => {
@@ -58,7 +60,14 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
         if (error) {
           console.error("Error fetching messages:", error);
         } else if (existingMessages && isMounted) {
-          setMessages(existingMessages);
+          // Decrypt messages
+          const decryptedMessages = await Promise.all(
+            existingMessages.map(async (msg) => ({
+              ...msg,
+              content: await decryptMessage(msg.content, chatId)
+            }))
+          );
+          setMessages(decryptedMessages);
         }
       };
 
@@ -68,9 +77,10 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
       pollInterval = setInterval(fetchMessages, 3000);
 
       if (!isMounted) return;
+      if (channelRef.current) return;
 
       // Subscribe to new messages and typing events
-      subscription = supabase
+      const subscription = supabase
         .channel(`chat_${chatId}_${Date.now()}`, {
           config: {
             broadcast: { self: false }
@@ -81,11 +91,15 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
           schema: 'public', 
           table: 'messages',
           filter: `chat_id=eq.${chatId}`
-        }, (payload) => {
+        }, async (payload) => {
           if (isMounted) {
+            // Decrypt incoming message
+            const decryptedContent = await decryptMessage(payload.new.content, chatId);
+            const decryptedMsg = { ...(payload.new as any), content: decryptedContent };
+            
             setMessages(prev => {
-              if (prev.find(m => m.id === payload.new.id)) return prev;
-              return [...prev, payload.new];
+              if (prev.find(m => m.id === (decryptedMsg as any).id)) return prev;
+              return [...prev, decryptedMsg];
             });
             // If they sent a message, they stopped typing
             setIsOtherTyping(false);
@@ -111,8 +125,9 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     return () => {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
-      if (subscription) {
-        supabase.removeChannel(subscription);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
   }, [chatId]);
@@ -131,20 +146,37 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
       const receiverId = chat.user1_id === currentUserId ? chat.user2_id : chat.user1_id;
 
+      // Encrypt the message content
+      const encryptedContent = await encryptMessage(textToSend, chatId);
+
       const { data: newMsg, error } = await supabase.from('messages').insert({
         chat_id: chatId,
         sender_id: currentUserId,
         receiver_id: receiverId,
-        content: textToSend
+        content: encryptedContent
       }).select().single();
 
       if (error) throw new Error("Insert error: " + error.message);
 
       if (newMsg) {
+        // We set the local state with the decrypted text so the sender sees it normally
+        const localMsg = { ...newMsg, content: textToSend };
         setMessages(prev => {
-          if (prev.find(m => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
+          if (prev.find(m => m.id === localMsg.id)) return prev;
+          return [...prev, localMsg];
         });
+
+        // Send notification to receiver
+        const { data: senderProfile } = await supabase.from('profiles').select('display_name, username').eq('id', currentUserId).single();
+        const senderName = senderProfile?.display_name || senderProfile?.username || 'مستخدم';
+        
+        await sendNotification(
+          receiverId,
+          'message',
+          `رسالة جديدة من ${senderName}: ${textToSend.substring(0, 30)}${textToSend.length > 30 ? '...' : ''}`,
+          currentUserId,
+          { chat_id: chatId }
+        );
       }
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -200,21 +232,36 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
       const receiverId = chat.user1_id === currentUserId ? chat.user2_id : chat.user1_id;
 
+      const encryptedContent = await encryptMessage('📷 صورة', chatId);
+
       const { data: newMsg, error: insertError } = await supabase.from('messages').insert({
         chat_id: chatId,
         sender_id: currentUserId,
         receiver_id: receiverId,
-        content: '📷 صورة',
+        content: encryptedContent,
         image_url: publicUrl
       }).select().single();
 
       if (insertError) throw new Error("Insert error: " + insertError.message);
 
       if (newMsg) {
+        const localMsg = { ...newMsg, content: '📷 صورة' };
         setMessages(prev => {
-          if (prev.find(m => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
+          if (prev.find(m => m.id === localMsg.id)) return prev;
+          return [...prev, localMsg];
         });
+
+        // Send notification to receiver
+        const { data: senderProfile } = await supabase.from('profiles').select('display_name, username').eq('id', currentUserId).single();
+        const senderName = senderProfile?.display_name || senderProfile?.username || 'مستخدم';
+
+        await sendNotification(
+          receiverId,
+          'message',
+          `أرسل ${senderName} صورة لك`,
+          currentUserId,
+          { chat_id: chatId }
+        );
       }
     } catch (error: any) {
       console.error("Error uploading image:", error);
@@ -347,8 +394,15 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
 
           {/* Messages Timeline */}
           <div className="flex flex-col gap-3 flex-1">
+            <div className="flex justify-center my-4">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary">
+                <span className="material-symbols-outlined text-[12px]">lock</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">الرسائل مشفرة من طرف إلى طرف</span>
+              </div>
+            </div>
+
             {messages.length > 0 && (
-              <div className="flex justify-center my-4">
+              <div className="flex justify-center my-2">
                 <span className="px-3 py-1 rounded-full bg-surface-container-high text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">اليوم</span>
               </div>
             )}

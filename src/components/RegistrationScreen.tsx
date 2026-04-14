@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
-export default function RegistrationScreen({ onNext, onBack, onLogin }: { onNext: () => void, onBack: () => void, onLogin: () => void }) {
+export default function RegistrationScreen({ onNext, onBack, onLogin, onPrivacyPolicy }: { onNext: () => void, onBack: () => void, onLogin: () => void, onPrivacyPolicy: () => void }) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -168,10 +168,32 @@ export default function RegistrationScreen({ onNext, onBack, onLogin }: { onNext
             </div>
           </div>
 
+          {/* Terms and Privacy Policy */}
+          <div className="flex items-start gap-3 pt-2">
+            <div className="flex items-center h-5">
+              <input
+                id="terms"
+                type="checkbox"
+                className="w-4 h-4 border border-outline-variant rounded bg-surface focus:ring-3 focus:ring-primary/30"
+                required
+              />
+            </div>
+            <label htmlFor="terms" className="text-xs text-on-surface-variant leading-relaxed">
+              أوافق على <button type="button" onClick={onPrivacyPolicy} className="text-primary hover:underline">شروط الاستخدام</button> و <button type="button" onClick={onPrivacyPolicy} className="text-primary hover:underline">سياسة الخصوصية</button>، وأؤكد أن عمري يتجاوز 18 عاماً.
+            </label>
+          </div>
+
           {/* Primary Action */}
           <div className="pt-4">
             <button 
-              onClick={handleRegister}
+              onClick={() => {
+                const termsCheckbox = document.getElementById('terms') as HTMLInputElement;
+                if (!termsCheckbox?.checked) {
+                  setError('يجب الموافقة على شروط الاستخدام وسياسة الخصوصية');
+                  return;
+                }
+                handleRegister();
+              }}
               disabled={loading}
               className="w-full py-4 rounded-xl bg-primary text-white font-bold text-base hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center">
               {loading ? (

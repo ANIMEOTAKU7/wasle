@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
@@ -19,6 +19,8 @@ interface ChatItem {
 export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onChatSelect: (id: string) => void, onBack: () => void, onNav: (screen: string) => void }) {
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const channelsRef = useRef<{ [key: string]: any }>({});
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -82,89 +84,124 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
     fetchChats();
 
     // Set up real-time subscription for new messages and new chats
-    const messagesChannel = supabase
-      .channel('public:messages_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages'
-        },
-        async (payload) => {
-          const newMessage = payload.new;
-          
-          setChats((prevChats) => {
-            const chatIndex = prevChats.findIndex(c => c.id === newMessage.chat_id);
-            
-            if (chatIndex !== -1) {
-              const updatedChats = [...prevChats];
-              updatedChats[chatIndex] = {
-                ...updatedChats[chatIndex],
-                last_message: {
-                  content: newMessage.content,
-                  created_at: newMessage.created_at
-                }
-              };
-
-              // Re-sort chats by last message time
-              return updatedChats.sort((a, b) => {
-                const timeA = new Date(a.last_message?.created_at || a.created_at).getTime();
-                const timeB = new Date(b.last_message?.created_at || b.created_at).getTime();
-                return timeB - timeA;
-              });
-            }
-            return prevChats;
-          });
-        }
-      )
-      .subscribe();
-
-    const chatsChannel = supabase
-      .channel('public:chats_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chats'
-        },
-        async (payload) => {
-          const newChat = payload.new;
-          const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-          if (!user) return;
-
-          // Check if I am part of this new chat
-          if (newChat.user1_id === user.id || newChat.user2_id === user.id) {
-            const otherUserId = newChat.user1_id === user.id ? newChat.user2_id : newChat.user1_id;
-            
-            // Get other user profile
-            const { data: profile } = await supabase
-              .from('users')
-              .select('id, username, avatar_url')
-              .eq('id', otherUserId)
-              .single();
-
-            const formattedNewChat: ChatItem = {
-              id: newChat.id,
-              created_at: newChat.created_at,
-              other_user: profile || { id: otherUserId, username: 'مستخدم' },
-            };
-
-            setChats(prev => {
-              // Avoid duplicates
-              if (prev.some(c => c.id === formattedNewChat.id)) return prev;
-              return [formattedNewChat, ...prev];
+    if (!channelsRef.current.presence) {
+      const presenceChannel = supabase.channel('online-users');
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const onlineIds = new Set<string>();
+          for (const key in state) {
+            state[key].forEach((presence: any) => {
+              if (presence.user_id) {
+                onlineIds.add(presence.user_id);
+              }
             });
           }
-        }
-      )
-      .subscribe();
+          setOnlineUsers(onlineIds);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              await presenceChannel.track({ user_id: session.user.id });
+            }
+          }
+        });
+      channelsRef.current.presence = presenceChannel;
+    }
+
+    if (!channelsRef.current.messages) {
+      const messagesChannel = supabase
+        .channel('public:messages_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages'
+          },
+          async (payload) => {
+            const newMessage = payload.new;
+            
+            setChats((prevChats) => {
+              const chatIndex = prevChats.findIndex(c => c.id === newMessage.chat_id);
+              
+              if (chatIndex !== -1) {
+                const updatedChats = [...prevChats];
+                updatedChats[chatIndex] = {
+                  ...updatedChats[chatIndex],
+                  last_message: {
+                    content: newMessage.content,
+                    created_at: newMessage.created_at
+                  }
+                };
+
+                // Re-sort chats by last message time
+                return updatedChats.sort((a, b) => {
+                  const timeA = new Date(a.last_message?.created_at || a.created_at).getTime();
+                  const timeB = new Date(b.last_message?.created_at || b.created_at).getTime();
+                  return timeB - timeA;
+                });
+              }
+              return prevChats;
+            });
+          }
+        )
+        .subscribe();
+      channelsRef.current.messages = messagesChannel;
+    }
+
+    if (!channelsRef.current.chats) {
+      const chatsChannel = supabase
+        .channel('public:chats_updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chats'
+          },
+          async (payload) => {
+            const newChat = payload.new;
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
+            if (!user) return;
+
+            // Check if I am part of this new chat
+            if (newChat.user1_id === user.id || newChat.user2_id === user.id) {
+              const otherUserId = newChat.user1_id === user.id ? newChat.user2_id : newChat.user1_id;
+              
+              // Get other user profile
+              const { data: profile } = await supabase
+                .from('users')
+                .select('id, username, avatar_url')
+                .eq('id', otherUserId)
+                .single();
+
+              const formattedNewChat: ChatItem = {
+                id: newChat.id,
+                created_at: newChat.created_at,
+                other_user: profile || { id: otherUserId, username: 'مستخدم' },
+              };
+
+              setChats(prev => {
+                // Avoid duplicates
+                if (prev.some(c => c.id === formattedNewChat.id)) return prev;
+                return [formattedNewChat, ...prev];
+              });
+            }
+          }
+        )
+        .subscribe();
+      channelsRef.current.chats = chatsChannel;
+    }
 
     return () => {
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(chatsChannel);
+      const channels = channelsRef.current;
+      if (channels.presence) supabase.removeChannel(channels.presence);
+      if (channels.messages) supabase.removeChannel(channels.messages);
+      if (channels.chats) supabase.removeChannel(channels.chats);
+      channelsRef.current = {};
     };
   }, []);
 
@@ -209,7 +246,9 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
                       <span className="material-symbols-outlined text-on-surface-variant text-2xl">person</span>
                     )}
                   </div>
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-surface"></div>
+                  {onlineUsers.has(chat.other_user.id) && (
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-surface"></div>
+                  )}
                 </div>
                 
                 <div className="flex-grow min-w-0">

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
+
+import { sendNotification } from '../lib/notifications';
 
 interface Comment {
   id: string;
@@ -55,44 +57,21 @@ const formatRelativeTime = (dateString: string) => {
   return `قبل ${diffInDays} يوم`;
 };
 
-const MOCK_POSTS: Post[] = [
-  {
-    id: '1',
-    author: { name: 'أحمد محمد', username: 'ahmed_m', avatar: null },
-    content: 'التصميم البسيط (Minimalism) ليس مجرد مساحات فارغة، بل هو إعطاء المساحة للأشياء المهمة لتبرز وتتنفس. ✨',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    likes: 12,
-    comments: 1,
-    commentsList: [
-      {
-        id: 'c1',
-        author: { name: 'عمر', username: 'omar_99', avatar: null },
-        content: 'أتفق معك تماماً! البساطة تصنع الجمال.',
-        timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-      }
-    ]
-  },
-  {
-    id: '2',
-    author: { name: 'سارة خالد', username: 'sara_k', avatar: null },
-    content: 'متحمسة جداً لتجربة الميزات الجديدة في التطبيق! الواجهة أصبحت أسرع وأكثر سلاسة. 🚀',
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    likes: 45,
-    comments: 0,
-    commentsList: []
-  }
-];
-
 export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => void }) {
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [inputText, setInputText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [showImageInput, setShowImageInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Comments state
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
 
   // Edit state
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
@@ -104,6 +83,99 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
 
   const MAX_CHARS = 280;
 
+  const fetchFollowing = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    
+    const { data } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', session.user.id);
+    
+    if (data) {
+      setFollowingIds(new Set(data.map(f => f.following_id)));
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      // Fetch posts with author profile
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          content,
+          image_url,
+          created_at,
+          user_id,
+          profiles:user_id ( id, display_name, username, avatar_url )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (postsError) throw postsError;
+
+      // Fetch likes
+      const { data: likesData } = await supabase.from('post_likes').select('post_id, user_id');
+      
+      // Fetch comments
+      const { data: commentsData } = await supabase
+        .from('post_comments')
+        .select(`
+          id,
+          post_id,
+          content,
+          created_at,
+          profiles:user_id ( id, display_name, username, avatar_url )
+        `)
+        .order('created_at', { ascending: true });
+
+      if (postsData) {
+        const formattedPosts: Post[] = postsData.map((post: any) => {
+          const postLikes = likesData?.filter(l => l.post_id === post.id) || [];
+          const isLiked = userId ? postLikes.some(l => l.user_id === userId) : false;
+          
+          const postComments = commentsData?.filter(c => c.post_id === post.id) || [];
+          const formattedComments: Comment[] = postComments.map((c: any) => ({
+            id: c.id,
+            author: {
+              name: c.profiles?.display_name || 'مستخدم',
+              username: c.profiles?.username || 'user',
+              avatar: c.profiles?.avatar_url || null
+            },
+            content: c.content,
+            timestamp: c.created_at
+          }));
+
+          return {
+            id: post.id,
+            author: {
+              id: post.user_id,
+              name: post.profiles?.display_name || 'مستخدم',
+              username: post.profiles?.username || 'user',
+              avatar: post.profiles?.avatar_url || null
+            },
+            content: post.content,
+            imageUrl: post.image_url,
+            timestamp: post.created_at,
+            likes: postLikes.length,
+            comments: formattedComments.length,
+            commentsList: formattedComments,
+            isLiked
+          };
+        });
+        setPosts(formattedPosts);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,39 +186,122 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
       }
     };
     fetchUser();
+    fetchPosts();
+    fetchFollowing();
   }, []);
 
-  const handlePost = () => {
-    if ((!inputText.trim() && !imageUrl.trim()) || inputText.length > MAX_CHARS) return;
+  const handleFollow = async (targetUserId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      author: {
-        name: currentUser?.display_name || 'مستخدم',
-        username: currentUser?.username || 'user',
-        avatar: currentUser?.avatar_url || null
-      },
-      content: inputText.trim(),
-      imageUrl: imageUrl.trim() || undefined,
-      timestamp: new Date().toISOString(),
-      likes: 0,
-      comments: 0,
-      commentsList: []
-    };
-
-    setPosts([newPost, ...posts]);
-    setInputText('');
-    setImageUrl('');
-    setShowImageInput(false);
+    const isFollowing = followingIds.has(targetUserId);
+    
+    try {
+      if (isFollowing) {
+        await supabase.from('follows').delete().match({ follower_id: session.user.id, following_id: targetUserId });
+        setFollowingIds(prev => {
+          const next = new Set(prev);
+          next.delete(targetUserId);
+          return next;
+        });
+      } else {
+        await supabase.from('follows').insert({ follower_id: session.user.id, following_id: targetUserId });
+        setFollowingIds(prev => new Set([...prev, targetUserId]));
+      }
+    } catch (error) {
+      console.error('Error following user:', error);
+    }
   };
 
-  const toggleLike = (id: string) => {
+  const handlePost = async () => {
+    if ((!inputText.trim() && !imageUrl.trim() && !imageFile) || inputText.length > MAX_CHARS || isUploading) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
+
+    setIsUploading(true);
+    try {
+      let finalImageUrl = imageUrl.trim() || null;
+
+      // Handle file upload if a file was selected
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('post_images')
+          .upload(filePath, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrl;
+      }
+
+      const { error } = await supabase.from('posts').insert({
+        user_id: user.id,
+        content: inputText.trim(),
+        image_url: finalImageUrl
+      });
+
+      if (error) throw error;
+
+      setInputText('');
+      setImageUrl('');
+      setImageFile(null);
+      setShowImageInput(false);
+      fetchPosts();
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert('حدث خطأ أثناء النشر. تأكد من إعداد Storage بشكل صحيح.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const toggleLike = async (postId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
+
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    // Optimistic update
     setPosts(posts.map(p => {
-      if (p.id === id) {
+      if (p.id === postId) {
         return { ...p, isLiked: !p.isLiked, likes: p.isLiked ? p.likes - 1 : p.likes + 1 };
       }
       return p;
     }));
+
+    try {
+      if (post.isLiked) {
+        await supabase.from('post_likes').delete().match({ post_id: postId, user_id: user.id });
+      } else {
+        await supabase.from('post_likes').insert({ post_id: postId, user_id: user.id });
+        
+        // Send notification to post author
+        if (post.author.id !== user.id) {
+          const senderName = currentUser?.display_name || currentUser?.username || 'مستخدم';
+          await sendNotification(
+            post.author.id,
+            'like',
+            `أعجب ${senderName} بمقتطفك: ${post.content.substring(0, 20)}...`,
+            user.id,
+            { post_id: postId }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      fetchPosts(); // Revert on error
+    }
   };
 
   const handleEditClick = (post: Post) => {
@@ -155,34 +310,62 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
     setEditPostImage(post.imageUrl || '');
   };
 
-  const handleSaveEdit = (postId: string) => {
-    if ((!editPostText.trim() && !editPostImage.trim()) || editPostText.length > MAX_CHARS) return;
-    
-    setPosts(posts.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          content: editPostText.trim(),
-          imageUrl: editPostImage.trim() || undefined
-        };
-      }
-      return p;
-    }));
-    setEditingPostId(null);
-  };
-
   const handleCancelEdit = () => {
     setEditingPostId(null);
+    setEditPostText('');
+    setEditPostImage('');
+  };
+
+  const handleSaveEdit = async (postId: string) => {
+    if ((!editPostText.trim() && !editPostImage.trim()) || editPostText.length > MAX_CHARS) return;
+    
+    try {
+      const { error } = await supabase.from('posts').update({
+        content: editPostText.trim(),
+        image_url: editPostImage.trim() || null
+      }).eq('id', postId);
+
+      if (error) throw error;
+
+      setEditingPostId(null);
+      fetchPosts();
+    } catch (error) {
+      console.error('Error updating post:', error);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+    const file = e.target.files[0];
+    setImageFile(file);
+    setImageUrl(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageUrl('');
+    setImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleDeleteClick = (postId: string) => {
     setPostToDelete(postId);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (postToDelete) {
-      setPosts(posts.filter(p => p.id !== postToDelete));
-      setPostToDelete(null);
+      try {
+        const { error } = await supabase.from('posts').delete().eq('id', postToDelete);
+        if (error) throw error;
+        
+        setPostToDelete(null);
+        fetchPosts();
+      } catch (error) {
+        console.error('Error deleting post:', error);
+      }
     }
   };
 
@@ -198,33 +381,41 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
     setCommentInputs(prev => ({ ...prev, [postId]: text }));
   };
 
-  const handleAddComment = (postId: string) => {
+  const handleAddComment = async (postId: string) => {
     const text = commentInputs[postId];
     if (!text || !text.trim()) return;
 
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      author: {
-        name: currentUser?.display_name || 'مستخدم',
-        username: currentUser?.username || 'user',
-        avatar: currentUser?.avatar_url || null
-      },
-      content: text.trim(),
-      timestamp: new Date().toISOString()
-    };
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
 
-    setPosts(posts.map(p => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          comments: p.comments + 1,
-          commentsList: [...(p.commentsList || []), newComment]
-        };
+    try {
+      const { error } = await supabase.from('post_comments').insert({
+        post_id: postId,
+        user_id: user.id,
+        content: text.trim()
+      });
+
+      if (error) throw error;
+
+      // Send notification to post author
+      const post = posts.find(p => p.id === postId);
+      if (post && post.author.id !== user.id) {
+        const senderName = currentUser?.display_name || currentUser?.username || 'مستخدم';
+        await sendNotification(
+          post.author.id,
+          'comment',
+          `علق ${senderName} على مقتطفك: ${text.substring(0, 20)}...`,
+          user.id,
+          { post_id: postId }
+        );
       }
-      return p;
-    }));
 
-    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      fetchPosts();
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
   return (
@@ -263,18 +454,29 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
                     className="overflow-hidden"
                   >
                     <input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="أدخل رابط الصورة هنا..."
-                      className="w-full bg-surface-container-high text-on-surface text-xs rounded-xl px-3 py-2 border border-outline-variant focus:border-primary/50 focus:outline-none transition-colors mb-2"
-                      dir="ltr"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleImageSelect}
                     />
+                    {!imageUrl && (
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex-1 bg-surface-container-high text-on-surface text-xs rounded-xl px-3 py-3 border border-outline-variant hover:border-primary/50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                          اختر صورة من جهازك
+                        </button>
+                      </div>
+                    )}
+                    
                     {imageUrl && (
                       <div className="relative w-full rounded-xl overflow-hidden mb-2 border border-outline-variant">
                         <img src={imageUrl} alt="Preview" className="w-full max-h-[200px] object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
                         <button 
-                          onClick={() => setImageUrl('')}
+                          onClick={clearImage}
                           className="absolute top-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70"
                         >
                           <span className="material-symbols-outlined text-[14px]">close</span>
@@ -300,10 +502,12 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
                 </div>
                 <button
                   onClick={handlePost}
-                  disabled={(!inputText.trim() && !imageUrl.trim()) || inputText.length > MAX_CHARS}
-                  className="px-5 py-1.5 bg-primary text-white text-sm font-bold rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                  disabled={(!inputText.trim() && !imageUrl.trim() && !imageFile) || inputText.length > MAX_CHARS || isUploading}
+                  className="px-5 py-1.5 bg-primary text-white text-sm font-bold rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center gap-2"
                 >
-                  نشر
+                  {isUploading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : 'نشر'}
                 </button>
               </div>
             </div>
@@ -312,8 +516,18 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
 
         {/* Feed Section */}
         <div className="flex flex-col">
-          <AnimatePresence>
-            {posts.map((post) => (
+          {isLoading ? (
+            <div className="flex justify-center p-10">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-10 text-on-surface-variant">
+              <span className="material-symbols-outlined text-4xl mb-2">post_add</span>
+              <p>لا توجد مقتطفات بعد. كن أول من ينشر!</p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {posts.map((post) => (
               <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: -10 }}
@@ -334,8 +548,20 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
                       <span className="text-xs text-on-surface-variant">@{post.author.username}</span>
                       <span className="text-xs text-on-surface-variant mx-1">·</span>
                       <span className="text-xs text-on-surface-variant">{formatRelativeTime(post.timestamp)}</span>
+                      
+                      {currentUser?.id !== post.author.id && (
+                        <>
+                          <span className="text-xs text-on-surface-variant mx-1">·</span>
+                          <button 
+                            onClick={() => handleFollow(post.author.id)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${followingIds.has(post.author.id) ? 'bg-surface-container-high text-on-surface-variant' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+                          >
+                            {followingIds.has(post.author.id) ? 'متابع' : 'متابعة'}
+                          </button>
+                        </>
+                      )}
                     </div>
-                    {currentUser?.username === post.author.username && editingPostId !== post.id && (
+                    {currentUser?.username === post.author.username && editingPostId !== post.id ? (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleEditClick(post)}
@@ -350,6 +576,19 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
                           title="حذف"
                         >
                           <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                    ) : currentUser?.username !== post.author.username && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => {
+                            alert('تم إرسال بلاغ عن هذا المنشور. سيقوم فريقنا بمراجعته قريباً.');
+                            // In a real app, this would insert a record into a 'reports' table
+                          }}
+                          className="text-on-surface-variant hover:text-error transition-colors p-1 rounded-full hover:bg-error/10"
+                          title="إبلاغ عن محتوى مسيء"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">flag</span>
                         </button>
                       </div>
                     )}
@@ -504,7 +743,8 @@ export default function SnippetsScreen({ onNav }: { onNav: (screen: string) => v
                 </div>
               </motion.div>
             ))}
-          </AnimatePresence>
+            </AnimatePresence>
+          )}
         </div>
       </main>
 

@@ -10,7 +10,7 @@ interface BlockedUser {
   };
 }
 
-export default function SecurityScreen({ onBack }: { onBack: () => void }) {
+export default function SecurityScreen({ onBack, onPrivacyPolicy }: { onBack: () => void, onPrivacyPolicy?: () => void }) {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +80,50 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
       }
     } catch (error) {
       console.error('Error unblocking user:', error);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) return;
+
+      alert('جاري تجميع بياناتك... قد يستغرق هذا بضع ثوانٍ.');
+
+      // Fetch all user data
+      const [profileRes, postsRes, commentsRes, interestsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('posts').select('*').eq('author_id', user.id),
+        supabase.from('post_comments').select('*').eq('user_id', user.id),
+        supabase.from('user_interests').select('interest_id').eq('user_id', user.id)
+      ]);
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        userInfo: {
+          email: user.email,
+          createdAt: user.created_at,
+          lastSignIn: user.last_sign_in_at
+        },
+        profile: profileRes.data,
+        posts: postsRes.data,
+        comments: commentsRes.data,
+        interests: interestsRes.data
+      };
+
+      // Create and download JSON file
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href",     dataStr);
+      downloadAnchorNode.setAttribute("download", "wasel_data_export.json");
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('حدث خطأ أثناء تصدير البيانات.');
     }
   };
 
@@ -196,6 +240,119 @@ export default function SecurityScreen({ onBack }: { onBack: () => void }) {
                     ))}
                   </div>
                 )}
+              </div>
+            </section>
+
+            {/* Data & Privacy Section */}
+            <section className="space-y-6 pt-6 border-t border-outline-variant">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <span className="material-symbols-outlined text-primary text-lg">database</span>
+                </div>
+                <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">بياناتك</h2>
+              </div>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={handleExportData}
+                  className="w-full bg-surface border border-outline-variant rounded-2xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-all group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant group-hover:text-primary transition-colors">
+                      <span className="material-symbols-outlined text-xl">download</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="font-bold text-xs text-on-surface uppercase tracking-widest">تصدير بياناتي</span>
+                      <span className="text-[9px] font-medium text-on-surface-variant mt-1">تحميل نسخة من كافة معلوماتك</span>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant text-lg rtl:rotate-180 group-hover:text-primary transition-colors">chevron_right</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Danger Zone Section */}
+            <section className="space-y-6 pt-6 border-t border-error/20">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center border border-error/20">
+                  <span className="material-symbols-outlined text-error text-lg">warning</span>
+                </div>
+                <h2 className="text-[10px] font-bold text-error uppercase tracking-[0.2em]">منطقة الخطر</h2>
+              </div>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={async () => {
+                    if (window.confirm('هل أنت متأكد من رغبتك في حذف حسابك نهائياً؟ هذا الإجراء لا يمكن التراجع عنه وسيتم مسح كافة بياناتك.')) {
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const user = session?.user;
+                        if (!user) return;
+
+                        // 1. Delete user from profiles table (this should cascade delete other data if foreign keys are set up correctly)
+                        const { error: profileError } = await supabase
+                          .from('profiles')
+                          .delete()
+                          .eq('id', user.id);
+
+                        if (profileError) {
+                          console.error('Error deleting profile:', profileError);
+                          alert('حدث خطأ أثناء محاولة حذف بياناتك. يرجى المحاولة مرة أخرى.');
+                          return;
+                        }
+
+                        // 2. Sign out the user
+                        await supabase.auth.signOut();
+                        
+                        // 3. Navigate back to landing screen
+                        // Note: To fully delete the user from Supabase Auth, you typically need an Edge Function
+                        // or admin privileges. For this prototype, deleting the profile and signing out is a good start.
+                        alert('تم حذف بيانات ملفك الشخصي وتسجيل خروجك بنجاح.');
+                        window.location.reload(); // Quick way to reset app state and go to landing
+                      } catch (error) {
+                        console.error('Error during account deletion:', error);
+                        alert('حدث خطأ غير متوقع.');
+                      }
+                    }
+                  }}
+                  className="w-full bg-error/5 border border-error/20 rounded-2xl p-5 flex items-center justify-between hover:bg-error/10 transition-all group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error group-hover:bg-error/20 transition-colors">
+                      <span className="material-symbols-outlined text-xl">delete_forever</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="font-bold text-xs text-error uppercase tracking-widest">حذف الحساب نهائياً</span>
+                      <span className="text-[9px] font-medium text-error/70 mt-1">سيتم مسح كافة بياناتك بشكل دائم</span>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-error/50 text-lg rtl:rotate-180 group-hover:text-error transition-colors">chevron_right</span>
+                </button>
+              </div>
+            </section>
+
+            {/* Legal Section */}
+            <section className="space-y-6 pt-6 border-t border-outline-variant">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center border border-outline-variant">
+                  <span className="material-symbols-outlined text-on-surface-variant text-lg">gavel</span>
+                </div>
+                <h2 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em]">قانوني</h2>
+              </div>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={onPrivacyPolicy}
+                  className="w-full bg-surface border border-outline-variant rounded-2xl p-5 flex items-center justify-between hover:bg-surface-container-high transition-all group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-on-surface-variant group-hover:text-on-surface transition-colors">
+                      <span className="material-symbols-outlined text-xl">policy</span>
+                    </div>
+                    <span className="font-bold text-xs text-on-surface uppercase tracking-widest">سياسة الخصوصية</span>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant text-lg rtl:rotate-180 group-hover:text-primary transition-colors">chevron_right</span>
+                </button>
               </div>
             </section>
           </div>

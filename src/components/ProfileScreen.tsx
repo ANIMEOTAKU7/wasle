@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 
-export default function ProfileScreen({ onNav }: { onNav: (screen: string) => void }) {
+export default function ProfileScreen({ onNav }: { onNav: (screen: string, params?: any) => void }) {
   const [profile, setProfile] = useState<any>(null);
   const [interests, setInterests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ posts: 0, likes: 0, matches: 0, followers: 0, following: 0 });
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -29,6 +30,23 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
         setProfile(profileData);
         setEditName(profileData?.display_name || '');
         setEditBio(profileData?.bio || '');
+
+        // Fetch stats including follows
+        const [postsRes, likesRes, chatsRes, followersRes, followingRes] = await Promise.all([
+          supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id),
+          supabase.from('post_likes').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('chats').select('id', { count: 'exact', head: true }).or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`),
+          supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', user.id),
+          supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', user.id)
+        ]);
+
+        setStats({
+          posts: postsRes.count || 0,
+          likes: likesRes.count || 0,
+          matches: chatsRes.count || 0,
+          followers: followersRes.count || 0,
+          following: followingRes.count || 0
+        });
 
         const { data: interestsData, error: interestsError } = await supabase
           .from('user_interests')
@@ -250,6 +268,43 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string) => vo
             )}
           </div>
         </section>
+
+        {/* Stats Section */}
+        {!isEditing && (
+          <div className="w-full space-y-4">
+            <section className="grid grid-cols-3 gap-3">
+              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
+                <span className="text-xl font-bold text-primary">{stats.posts}</span>
+                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">مقتطفات</span>
+              </div>
+              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
+                <span className="text-xl font-bold text-error">{stats.likes}</span>
+                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">إعجابات</span>
+              </div>
+              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
+                <span className="text-xl font-bold text-purple-500">{stats.matches}</span>
+                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">تطابقات</span>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-2 gap-3">
+              <div 
+                onClick={() => onNav('follows', { userId: profile?.id, type: 'followers' })}
+                className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
+              >
+                <span className="text-xl font-bold text-on-surface">{stats.followers}</span>
+                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">متابع</span>
+              </div>
+              <div 
+                onClick={() => onNav('follows', { userId: profile?.id, type: 'following' })}
+                className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
+              >
+                <span className="text-xl font-bold text-on-surface">{stats.following}</span>
+                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">أتابع</span>
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* Interests Section */}
         <section className="space-y-4 bg-surface p-6 rounded-3xl border border-outline-variant">

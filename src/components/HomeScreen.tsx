@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
@@ -58,8 +58,10 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const channelRef = useRef<any>(null);
 
   // Stories State
   const [stories, setStories] = useState<Story[]>(MOCK_STORIES);
@@ -99,6 +101,41 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
           if (profileError) throw profileError;
           if (isMounted) setProfile(profileData);
 
+          // Fetch unread notifications count
+          const { count } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('read', false);
+          
+          if (isMounted) setUnreadCount(count || 0);
+
+          // Subscribe to notifications for real-time badge
+          if (!channelRef.current) {
+            const channelName = `unread-notifications-${Math.random().toString(36).substring(2, 9)}`;
+            const channel = supabase
+              .channel(channelName)
+              .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${user.id}`
+              }, () => {
+                // Re-fetch count on any change
+                supabase
+                  .from('notifications')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('user_id', user.id)
+                  .eq('read', false)
+                  .then(({ count }) => {
+                    if (isMounted) setUnreadCount(count || 0);
+                  });
+              });
+            
+            channel.subscribe();
+            channelRef.current = channel;
+          }
+
           const { data: interestsData, error: interestsError } = await supabase
             .from('user_interests')
             .select(`
@@ -130,6 +167,10 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
 
     return () => {
       isMounted = false; // Cleanup function to prevent memory leaks
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, []);
 
@@ -236,8 +277,17 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
               <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
             </button>
           )}
-          <button aria-label="الإشعارات" className="relative w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
+          <button 
+            onClick={() => onNav('notifications')}
+            aria-label="الإشعارات" 
+            className="relative w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
+          >
             <span className="material-symbols-outlined text-lg">notifications_none</span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-error text-white text-[10px] font-bold rounded-full border-2 border-background flex items-center justify-center animate-in zoom-in duration-300">
+                {unreadCount > 9 ? '+٩' : unreadCount.toLocaleString('ar-EG')}
+              </span>
+            )}
           </button>
         </div>
       </header>

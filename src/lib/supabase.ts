@@ -12,7 +12,7 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     global: {
-      fetch: (...args) => fetch(...args),
-    },
+      fetch: globalThis.fetch.bind(globalThis)
+    }
   }
 );
