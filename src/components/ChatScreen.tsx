@@ -22,6 +22,8 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
   const [reportReason, setReportReason] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -39,6 +41,20 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
       setCurrentUserId(user.id);
 
       if (!chatId) return;
+
+      // Fetch mute status
+      try {
+        const { data: muteData } = await supabase
+          .from('chat_mutes')
+          .select('id')
+          .match({ chat_id: chatId, user_id: user.id })
+          .maybeSingle();
+        if (muteData && isMounted) {
+          setIsMuted(true);
+        }
+      } catch (e) {
+        console.log('chat_mutes table might not exist');
+      }
 
       // Fetch chat details to get the other user's profile
       const { data: chat } = await supabase.from('chats').select('user1_id, user2_id').eq('id', chatId).single();
@@ -336,13 +352,54 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
     }
   };
 
+  const handleMuteToggle = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !chatId) return;
+
+    try {
+      if (isMuted) {
+        await supabase.from('chat_mutes').delete().match({ chat_id: chatId, user_id: session.user.id });
+        setIsMuted(false);
+      } else {
+        await supabase.from('chat_mutes').insert({ chat_id: chatId, user_id: session.user.id });
+        setIsMuted(true);
+      }
+    } catch (error) {
+      console.error('Error toggling mute:', error);
+      setIsMuted(!isMuted); // Toggle locally anyway
+    }
+    setShowMenu(false);
+  };
+
+  const handleBlockUser = async () => {
+    if (!window.confirm('هل أنت متأكد من حظر هذا المستخدم؟')) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user || !otherUserProfile) return;
+
+    try {
+      await supabase.from('blocked_users').insert({
+        blocker_id: session.user.id,
+        blocked_id: otherUserProfile.id
+      });
+      alert('تم حظر المستخدم');
+      onBack();
+    } catch (error) {
+      console.error('Error blocking user:', error);
+    }
+    setShowMenu(false);
+  };
+
   return (
     <div className="bg-background flex justify-center items-center min-h-screen overflow-hidden text-on-surface">
       <main className="w-full max-w-[390px] h-[100dvh] flex flex-col relative overflow-hidden bg-background">
         {/* Header */}
         <header className="w-full z-50 flex justify-between items-center px-6 py-5 shrink-0 border-b border-outline-variant bg-background/90 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="text-on-surface-variant hover:text-on-surface transition-colors p-2 -mr-2">
+            <button 
+              onClick={onBack} 
+              aria-label="العودة"
+              className="text-on-surface-variant hover:text-on-surface transition-colors p-2 -ms-2"
+            >
               <span className="material-symbols-outlined rtl:rotate-180">arrow_back</span>
             </button>
             <div className="flex items-center gap-3">
@@ -362,14 +419,52 @@ export default function ChatScreen({ chatId, onBack }: { chatId: string | null, 
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 relative">
             <button 
-              onClick={() => setReportTarget('chat')}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-all"
-              title="إبلاغ"
+              onClick={() => setShowMenu(!showMenu)}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all"
+              title="المزيد"
             >
-              <span className="material-symbols-outlined text-lg">flag</span>
+              <span className="material-symbols-outlined text-xl">more_vert</span>
             </button>
+
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  className="absolute left-0 top-full mt-2 w-48 bg-surface-container-highest border border-outline-variant rounded-2xl shadow-2xl z-[60] overflow-hidden"
+                >
+                  <button 
+                    onClick={handleMuteToggle}
+                    className="w-full px-4 py-3 text-right text-sm font-medium hover:bg-surface-container-high transition-colors flex items-center gap-3"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {isMuted ? 'notifications_active' : 'notifications_off'}
+                    </span>
+                    {isMuted ? 'إلغاء كتم التنبيهات' : 'كتم التنبيهات'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setReportTarget('chat');
+                      setShowMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-right text-sm font-medium hover:bg-surface-container-high transition-colors flex items-center gap-3 border-t border-outline-variant"
+                  >
+                    <span className="material-symbols-outlined text-lg">flag</span>
+                    إبلاغ
+                  </button>
+                  <button 
+                    onClick={handleBlockUser}
+                    className="w-full px-4 py-3 text-right text-sm font-medium hover:bg-error/10 text-error transition-colors flex items-center gap-3 border-t border-outline-variant"
+                  >
+                    <span className="material-symbols-outlined text-lg">block</span>
+                    حظر المستخدم
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 

@@ -55,7 +55,11 @@ export default function RegistrationScreen({ onNext, onBack, onLogin, onPrivacyP
     <div className="flex flex-col min-h-[100dvh] max-w-[390px] mx-auto w-full bg-background">
       {/* TopAppBar */}
       <header className="w-full flex items-center justify-between px-6 h-20 shrink-0">
-        <button onClick={onBack} className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95 border border-outline-variant text-on-surface">
+        <button 
+          onClick={onBack} 
+          aria-label="العودة"
+          className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center hover:bg-surface-container-high transition-all active:scale-95 border border-outline-variant text-on-surface"
+        >
           <span className="material-symbols-outlined text-xl">arrow_forward</span>
         </button>
         <h1 className="font-headline text-lg font-bold text-on-surface tracking-tight">إنشاء حساب</h1>
@@ -222,7 +226,7 @@ export default function RegistrationScreen({ onNext, onBack, onLogin, onPrivacyP
         <footer className="mt-auto pt-8 pb-4 text-center">
           <p className="text-on-surface-variant text-sm">
             لديك حساب بالفعل؟ 
-            <button onClick={onLogin} className="text-primary font-bold hover:underline mr-2 transition-all">سجل دخولك</button>
+            <button onClick={onLogin} className="text-primary font-bold hover:underline ms-2 transition-all">سجل دخولك</button>
           </p>
         </footer>
       </main>

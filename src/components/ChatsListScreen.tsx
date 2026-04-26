@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
 interface ChatItem {
@@ -20,6 +20,8 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [activeMenuChatId, setActiveMenuChatId] = useState<string | null>(null);
+  const [mutedChats, setMutedChats] = useState<Set<string>>(new Set());
   const channelsRef = useRef<{ [key: string]: any }>({});
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
       try {
         setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+        const user = session?.user;
         if (!user) return;
 
         // Fetch chats where user is participant
@@ -43,6 +45,19 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
           .order('created_at', { ascending: false });
 
         if (chatsError) throw chatsError;
+
+        // Fetch muted chats (if table exists, otherwise fallback to empty)
+        try {
+          const { data: mutesData } = await supabase
+            .from('chat_mutes')
+            .select('chat_id')
+            .eq('user_id', user.id);
+          if (mutesData) {
+            setMutedChats(new Set(mutesData.map(m => m.chat_id)));
+          }
+        } catch (e) {
+          console.log('chat_mutes table might not exist yet');
+        }
 
         if (chatsData) {
           const formattedChats = await Promise.all(chatsData.map(async (chat) => {
@@ -205,6 +220,59 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
     };
   }, []);
 
+  const handleMuteChat = async (chatId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    const isMuted = mutedChats.has(chatId);
+    try {
+      if (isMuted) {
+        await supabase.from('chat_mutes').delete().match({ chat_id: chatId, user_id: session.user.id });
+        setMutedChats(prev => {
+          const next = new Set(prev);
+          next.delete(chatId);
+          return next;
+        });
+      } else {
+        await supabase.from('chat_mutes').insert({ chat_id: chatId, user_id: session.user.id });
+        setMutedChats(prev => new Set([...prev, chatId]));
+      }
+    } catch (error) {
+      console.error('Error toggling mute:', error);
+      // Fallback: just toggle locally if table missing
+      setMutedChats(prev => {
+        const next = new Set(prev);
+        if (isMuted) next.delete(chatId);
+        else next.add(chatId);
+        return next;
+      });
+    }
+    setActiveMenuChatId(null);
+  };
+
+  const handleBlockUser = async (otherUserId: string, chatId: string) => {
+    if (!window.confirm('هل أنت متأكد من حظر هذا المستخدم؟ لن تتمكن من مراسلته مرة أخرى.')) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    try {
+      const { error } = await supabase.from('blocked_users').insert({
+        blocker_id: session.user.id,
+        blocked_id: otherUserId
+      });
+      if (error) throw error;
+
+      // Optionally delete the chat or just hide it
+      setChats(prev => prev.filter(c => c.id !== chatId));
+      alert('تم حظر المستخدم بنجاح');
+    } catch (error) {
+      console.error('Error blocking user:', error);
+      alert('حدث خطأ أثناء حظر المستخدم');
+    }
+    setActiveMenuChatId(null);
+  };
+
   return (
     <div className="bg-background text-on-surface min-h-screen flex flex-col items-center max-w-[390px] mx-auto relative overflow-hidden">
       {/* Top Bar */}
@@ -253,7 +321,12 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
                 
                 <div className="flex-grow min-w-0">
                   <div className="flex justify-between items-center mb-1">
-                    <h3 className="text-on-surface font-bold text-base truncate tracking-tight">{chat.other_user.username}</h3>
+                    <h3 className="text-on-surface font-bold text-base truncate tracking-tight">
+                      {chat.other_user.username}
+                      {mutedChats.has(chat.id) && (
+                        <span className="material-symbols-outlined text-xs text-on-surface-variant ms-1 align-middle">notifications_off</span>
+                      )}
+                    </h3>
                     <span className="text-xs text-on-surface-variant font-medium">
                       {new Date(chat.last_message?.created_at || chat.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -262,6 +335,46 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
                     <p className="text-sm text-on-surface-variant truncate">
                       {chat.last_message?.content || 'ابدأ المحادثة الآن...'}
                     </p>
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuChatId(activeMenuChatId === chat.id ? null : chat.id);
+                        }}
+                        className="p-1 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">more_vert</span>
+                      </button>
+
+                      <AnimatePresence>
+                        {activeMenuChatId === chat.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                            className="absolute left-0 bottom-full mb-2 w-48 bg-surface-container-highest border border-outline-variant rounded-2xl shadow-2xl z-[60] overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button 
+                              onClick={() => handleMuteChat(chat.id)}
+                              className="w-full px-4 py-3 text-right text-sm font-medium hover:bg-surface-container-high transition-colors flex items-center gap-3"
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                {mutedChats.has(chat.id) ? 'notifications_active' : 'notifications_off'}
+                              </span>
+                              {mutedChats.has(chat.id) ? 'إلغاء كتم التنبيهات' : 'كتم التنبيهات'}
+                            </button>
+                            <button 
+                              onClick={() => handleBlockUser(chat.other_user.id, chat.id)}
+                              className="w-full px-4 py-3 text-right text-sm font-medium hover:bg-error/10 text-error transition-colors flex items-center gap-3 border-t border-outline-variant"
+                            >
+                              <span className="material-symbols-outlined text-lg">block</span>
+                              حظر المستخدم
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
               </motion.div>

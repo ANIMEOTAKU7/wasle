@@ -173,6 +173,7 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
         <h1 className="text-xl font-bold tracking-tight">الملف الشخصي</h1>
         <button 
           onClick={() => onNav('security')}
+          aria-label="الإعدادات"
           className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all"
         >
           <span className="material-symbols-outlined text-xl">settings</span>
