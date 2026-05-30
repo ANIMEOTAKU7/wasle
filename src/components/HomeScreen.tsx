@@ -54,6 +54,8 @@ const MOCK_STORIES: Story[] = [
   }
 ];
 
+import { ThemeToggle } from './ThemeToggle';
+
 export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, onNav: (screen: string) => void }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -93,7 +95,7 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
           }
 
           const { data: profileData, error: profileError } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
@@ -268,6 +270,7 @@ export default function HomeScreen({ onSearch, onNav }: { onSearch: () => void, 
           </div>
         </motion.div>
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {isAdmin && (
             <button 
               onClick={() => onNav('admin')}

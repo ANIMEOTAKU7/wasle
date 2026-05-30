@@ -2,24 +2,60 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #09090b; /* zinc-950 */
-  --color-surface: #18181b; /* zinc-900 */
-  --color-primary: #8b5cf6; /* violet-500 */
-  --color-primary-container: #4c1d95; /* violet-900 */
-  --color-on-primary-container: #ddd6fe; /* violet-200 */
-  --color-secondary: #3b82f6; /* blue-500 */
-  --color-error: #f87171; /* red-400 */
-  --color-surface-container-low: #09090b;
-  --color-surface-container-high: #27272a; /* zinc-800 */
-  --color-surface-container-highest: #3f3f46; /* zinc-700 */
-  --color-on-surface: #f4f4f5; /* zinc-100 */
-  --color-on-surface-variant: #a1a1aa; /* zinc-400 */
-  --color-outline-variant: #27272a; /* zinc-800 */
-  --color-outline: #52525b; /* zinc-600 */
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-primary: var(--primary-color);
+  --color-primary-container: var(--primary-container-color);
+  --color-on-primary-container: var(--on-primary-container-color);
+  --color-secondary: var(--secondary-color);
+  --color-error: var(--error-color);
+  --color-surface-container-low: var(--surface-container-low-color);
+  --color-surface-container-high: var(--surface-container-high-color);
+  --color-surface-container-highest: var(--surface-container-highest-color);
+  --color-on-surface: var(--on-surface-color);
+  --color-on-surface-variant: var(--on-surface-variant-color);
+  --color-outline-variant: var(--outline-variant-color);
+  --color-outline: var(--outline-color);
 
   --font-headline: "Tajawal", sans-serif;
   --font-body: "Tajawal", sans-serif;
   --font-arabic: "Tajawal", sans-serif;
+}
+
+@layer base {
+  :root {
+    --bg-color: #ffffff;
+    --surface-color: #f4f4f5;
+    --primary-color: #8b5cf6;
+    --primary-container-color: #ede9fe;
+    --on-primary-container-color: #4c1d95;
+    --secondary-color: #3b82f6;
+    --error-color: #ef4444;
+    --surface-container-low-color: #ffffff;
+    --surface-container-high-color: #e4e4e7;
+    --surface-container-highest-color: #d4d4d8;
+    --on-surface-color: #18181b;
+    --on-surface-variant-color: #52525b;
+    --outline-variant-color: #e4e4e7;
+    --outline-color: #a1a1aa;
+  }
+
+  .dark {
+    --bg-color: #09090b;
+    --surface-color: #18181b;
+    --primary-color: #8b5cf6;
+    --primary-container-color: #4c1d95;
+    --on-primary-container-color: #ddd6fe;
+    --secondary-color: #3b82f6;
+    --error-color: #f87171;
+    --surface-container-low-color: #09090b;
+    --surface-container-high-color: #27272a;
+    --surface-container-highest-color: #3f3f46;
+    --on-surface-color: #f4f4f5;
+    --on-surface-variant-color: #a1a1aa;
+    --outline-variant-color: #27272a;
+    --outline-color: #52525b;
+  }
 }
 
 body {

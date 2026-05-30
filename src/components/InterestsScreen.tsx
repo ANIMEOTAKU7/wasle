@@ -170,9 +170,14 @@ export default function InterestsScreen({ onNext, onBack }: { onNext: () => void
 
         {/* Interests Grid */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-            <p className="text-on-surface-variant text-xs font-bold">جاري تحميل الاهتمامات...</p>
+          <div className="flex flex-wrap gap-2 mb-10">
+            {[...Array(15)].map((_, i) => (
+              <div
+                key={i}
+                className="h-[42px] bg-surface-container-highest rounded-xl animate-pulse"
+                style={{ width: `${Math.random() * 40 + 80}px` }}
+              ></div>
+            ))}
           </div>
         ) : (
           <div className="flex flex-wrap gap-2 mb-10">

@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
+import { ProfileHeader } from './ProfileHeader';
+import { ProfilePostGrid } from './ProfilePostGrid';
+import { ProfileInterestsList } from './ProfileInterestsList';
 
 export default function ProfileScreen({ onNav }: { onNav: (screen: string, params?: any) => void }) {
   const [profile, setProfile] = useState<any>(null);
   const [interests, setInterests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ posts: 0, likes: 0, matches: 0, followers: 0, following: 0 });
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'posts' | 'interests'>('posts');
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -15,8 +20,6 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     loadProfile();
   }, []);
@@ -32,12 +35,13 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
         setEditBio(profileData?.bio || '');
 
         // Fetch stats including follows
-        const [postsRes, likesRes, chatsRes, followersRes, followingRes] = await Promise.all([
-          supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id),
+        const [postsRes, likesRes, chatsRes, followersRes, followingRes, userPostsRes] = await Promise.all([
+          supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
           supabase.from('post_likes').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
           supabase.from('chats').select('id', { count: 'exact', head: true }).or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`),
           supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', user.id),
-          supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', user.id)
+          supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', user.id),
+          supabase.from('posts').select('id, content, image_url, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
         ]);
 
         setStats({
@@ -47,6 +51,10 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
           followers: followersRes.count || 0,
           following: followingRes.count || 0
         });
+
+        if (userPostsRes.data) {
+          setUserPosts(userPostsRes.data);
+        }
 
         const { data: interestsData, error: interestsError } = await supabase
           .from('user_interests')
@@ -125,23 +133,19 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
       
       const filePath = `${user.id}-${Math.random()}.${fileExt}`;
 
-      // Upload to Supabase Storage (assuming a bucket named 'avatars' exists)
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) {
-        // If the bucket doesn't exist, we'll catch it and alert the user.
         console.error("Upload error details:", uploadError);
         throw new Error('فشل رفع الصورة. تأكد من إعداد Storage Bucket باسم "avatars" في Supabase.');
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update profile
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -160,17 +164,66 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <span className="material-symbols-outlined animate-spin text-primary text-4xl">progress_activity</span>
+      <div className="flex flex-col items-center justify-start min-h-screen pb-32 overflow-x-hidden w-full mx-auto relative bg-background text-on-surface">
+        <header className="w-full max-w-7xl mx-auto z-50 flex items-center justify-between px-4 sm:px-6 py-4 border-b border-outline-variant bg-background/90 backdrop-blur-md shrink-0 sticky top-0">
+          <div className="h-6 w-32 bg-surface-container-highest rounded-full animate-pulse"></div>
+          <div className="w-10 h-10 rounded-full bg-surface-container-highest animate-pulse"></div>
+        </header>
+
+        <main className="w-full max-w-3xl pt-4 space-y-0 flex-1 overflow-y-auto">
+          <section className="px-4 pb-4">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-surface-container-highest animate-pulse shrink-0"></div>
+              <div className="flex-1 flex justify-around items-center pt-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 px-4">
+                    <div className="w-8 h-8 bg-surface-container-highest rounded-full animate-pulse"></div>
+                    <div className="w-12 h-3 bg-surface-container-highest rounded-full animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="w-full flex flex-col gap-2 mb-4">
+              <div className="h-4 w-1/3 bg-surface-container-highest rounded-full animate-pulse"></div>
+              <div className="h-3 w-2/3 bg-surface-container-highest rounded-full animate-pulse mt-1"></div>
+              <div className="h-3 w-1/2 bg-surface-container-highest rounded-full animate-pulse mt-0.5"></div>
+              <div className="h-2 w-1/4 bg-surface-container-highest rounded-full animate-pulse mt-2"></div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex-1 py-4 bg-surface-container-highest rounded-lg animate-pulse"></div>
+              <div className="w-12 py-4 bg-surface-container-highest rounded-lg animate-pulse"></div>
+            </div>
+          </section>
+
+          <div className="flex items-center w-full border-t border-outline-variant mt-2">
+            <div className="flex-1 flex justify-center items-center py-4 border-b-2 border-transparent">
+              <div className="w-6 h-6 bg-surface-container-highest rounded animate-pulse"></div>
+            </div>
+            <div className="flex-1 flex justify-center items-center py-4 border-b-2 border-transparent">
+              <div className="w-6 h-6 bg-surface-container-highest rounded animate-pulse"></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-0.5 pb-24 mt-0.5">
+            {[...Array(9)].map((_, i) => (
+              <div key={i} className="aspect-square bg-surface-container-highest animate-pulse"></div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-screen pb-32 overflow-x-hidden max-w-[390px] mx-auto relative bg-background text-on-surface">
+    <div className="flex flex-col items-center justify-start min-h-screen pb-32 overflow-x-hidden w-full mx-auto relative bg-background text-on-surface">
       {/* Top Bar */}
-      <header className="w-full max-w-[390px] z-50 flex items-center justify-between px-6 py-6 border-b border-outline-variant bg-background/90 backdrop-blur-md shrink-0">
-        <h1 className="text-xl font-bold tracking-tight">الملف الشخصي</h1>
+      <header className="w-full max-w-7xl mx-auto z-50 flex items-center justify-between px-4 sm:px-6 py-4 border-b border-outline-variant bg-background/90 backdrop-blur-md shrink-0 sticky top-0">
+        <h1 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2">
+          {profile?.username || profile?.display_name || 'الملف الشخصي'}
+          <span className="material-symbols-outlined text-sm text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+        </h1>
         <button 
           onClick={() => onNav('security')}
           aria-label="الإعدادات"
@@ -180,207 +233,63 @@ export default function ProfileScreen({ onNav }: { onNav: (screen: string, param
         </button>
       </header>
 
-      <main className="w-full pt-8 px-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
-        {/* Avatar Section */}
-        <section className="flex flex-col items-center space-y-6">
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border-4 border-background shadow-sm">
-              {uploadingAvatar ? (
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-              ) : profile?.avatar_url ? (
-                <img alt="User Profile" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src={profile.avatar_url} referrerPolicy="no-referrer" />
-              ) : (
-                <span className="material-symbols-outlined text-5xl text-on-surface-variant">person</span>
-              )}
-            </div>
-            
-            {/* Upload Button */}
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 active:scale-95 transition-all border-4 border-background"
-            >
-              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleAvatarUpload} 
-              accept="image/*" 
-              className="hidden" 
-            />
-          </div>
+      <main className="w-full max-w-3xl pt-4 space-y-0 flex-1 overflow-y-auto custom-scrollbar">
+        <ProfileHeader 
+          profile={profile}
+          stats={stats}
+          isEditing={isEditing}
+          editName={editName}
+          editBio={editBio}
+          isSaving={isSaving}
+          uploadingAvatar={uploadingAvatar}
+          onEditNameChange={setEditName}
+          onEditBioChange={setEditBio}
+          onSaveProfile={handleSaveProfile}
+          onCancelEdit={() => setIsEditing(false)}
+          onToggleEdit={() => setIsEditing(true)}
+          onLogout={handleLogout}
+          onAvatarUpload={handleAvatarUpload}
+          onNav={onNav}
+        />
 
-          <div className="text-center w-full">
-            {isEditing ? (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4 w-full bg-surface p-6 rounded-3xl border border-outline-variant"
-              >
-                <div className="space-y-1 text-right">
-                  <label className="text-xs font-medium text-on-surface-variant px-1">الاسم المستعار</label>
-                  <input 
-                    type="text" 
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="الاسم المستعار"
-                    className="w-full bg-surface-container-high border border-outline-variant rounded-xl px-4 py-3 text-on-surface text-sm focus:outline-none focus:border-primary transition-all font-medium"
-                  />
-                </div>
-                <div className="space-y-1 text-right">
-                  <label className="text-xs font-medium text-on-surface-variant px-1">النبذة الشخصية</label>
-                  <textarea 
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value)}
-                    placeholder="نبذة قصيرة عنك تظهر للآخرين..."
-                    rows={3}
-                    className="w-full bg-surface-container-high border border-outline-variant rounded-xl px-4 py-3 text-on-surface text-sm focus:outline-none focus:border-primary transition-all resize-none font-medium leading-relaxed"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={() => setIsEditing(false)}
-                    className="flex-1 py-3 rounded-xl text-on-surface-variant hover:text-on-surface text-sm font-bold transition-all bg-surface-container-high"
-                  >
-                    إلغاء
-                  </button>
-                  <button 
-                    onClick={handleSaveProfile}
-                    disabled={isSaving}
-                    className="flex-[2] py-3 bg-primary text-white hover:bg-primary/90 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    {isSaving ? <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span> : 'حفظ التغييرات'}
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-on-surface tracking-tight">{profile?.display_name || 'مستخدم مجهول'}</h2>
-                <p className="text-on-surface-variant text-sm font-medium max-w-[280px] mx-auto leading-relaxed">
-                  {profile?.bio || 'لا توجد نبذة شخصية حتى الآن. أضف شيئاً عن نفسك!'}
-                </p>
-                <div className="pt-2 flex items-center justify-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-surface-container-high text-xs font-medium text-on-surface-variant border border-outline-variant">
-                    {profile?.created_at ? `عضو منذ ${new Date(profile.created_at).getFullYear()}` : 'عضو جديد'}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Stats Section */}
+        {/* Tabs */}
         {!isEditing && (
-          <div className="w-full space-y-4">
-            <section className="grid grid-cols-3 gap-3">
-              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
-                <span className="text-xl font-bold text-primary">{stats.posts}</span>
-                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">مقتطفات</span>
-              </div>
-              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
-                <span className="text-xl font-bold text-error">{stats.likes}</span>
-                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">إعجابات</span>
-              </div>
-              <div className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
-                <span className="text-xl font-bold text-purple-500">{stats.matches}</span>
-                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">تطابقات</span>
-              </div>
-            </section>
-
-            <section className="grid grid-cols-2 gap-3">
-              <div 
-                onClick={() => onNav('follows', { userId: profile?.id, type: 'followers' })}
-                className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
-              >
-                <span className="text-xl font-bold text-on-surface">{stats.followers}</span>
-                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">متابع</span>
-              </div>
-              <div 
-                onClick={() => onNav('follows', { userId: profile?.id, type: 'following' })}
-                className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-surface-container-high transition-colors"
-              >
-                <span className="text-xl font-bold text-on-surface">{stats.following}</span>
-                <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest">أتابع</span>
-              </div>
-            </section>
+          <div className="flex items-center w-full border-t border-outline-variant">
+            <button 
+              onClick={() => setActiveTab('posts')}
+              className={`flex-1 flex justify-center items-center py-3 border-b-2 transition-colors ${activeTab === 'posts' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+            >
+              <span className="material-symbols-outlined text-[24px]">grid_on</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('interests')}
+              className={`flex-1 flex justify-center items-center py-3 border-b-2 transition-colors ${activeTab === 'interests' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+            >
+              <span className="material-symbols-outlined text-[24px]">favorite</span>
+            </button>
           </div>
         )}
 
-        {/* Interests Section */}
-        <section className="space-y-4 bg-surface p-6 rounded-3xl border border-outline-variant">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-lg">favorite</span>
-              <h3 className="text-sm font-bold text-on-surface">الاهتمامات</h3>
-            </div>
-            <button 
-              onClick={() => onNav('interests')} 
-              className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-primary hover:bg-primary/10 transition-all"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {interests.length > 0 ? (
-              interests.map((interest, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="bg-surface-container-high border border-outline-variant px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-surface-container-highest transition-all"
-                >
-                  <span className="text-base">{interest.icon}</span>
-                  <span className="text-xs font-medium text-on-surface">{interest.name}</span>
-                </motion.div>
-              ))
-            ) : (
-              <div className="w-full py-4 text-center">
-                <p className="text-sm text-on-surface-variant font-medium italic">لم تقم بإضافة اهتمامات بعد.</p>
-              </div>
-            )}
-          </div>
-        </section>
+        {/* Grid / Content */}
+        {!isEditing && activeTab === 'posts' && (
+          <ProfilePostGrid posts={userPosts} />
+        )}
 
-        {/* Actions Section */}
-        <section className="space-y-3 pb-10">
-          {!isEditing && (
-            <button 
-              onClick={() => setIsEditing(true)}
-              className="w-full flex items-center justify-between py-4 px-5 text-on-surface-variant hover:text-on-surface bg-surface hover:bg-surface-container-high rounded-2xl transition-all border border-outline-variant group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
-                  <span className="material-symbols-outlined text-xl">edit_note</span>
-                </div>
-                <span className="font-bold text-sm">تعديل الملف الشخصي</span>
-              </div>
-              <span className="material-symbols-outlined text-on-surface-variant group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
-            </button>
-          )}
-          
-          <button 
-            onClick={handleLogout} 
-            className="w-full flex items-center justify-between py-4 px-5 text-error hover:text-error/80 bg-error/5 hover:bg-error/10 rounded-2xl transition-all border border-error/10 group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-xl">logout</span>
-              </div>
-              <span className="font-bold text-sm">تسجيل الخروج</span>
-            </div>
-            <span className="material-symbols-outlined text-error/50 group-hover:translate-x-[-4px] transition-transform rtl:rotate-180">chevron_left</span>
-          </button>
-        </section>
+        {/* Interests Tab */}
+        {!isEditing && activeTab === 'interests' && (
+          <ProfileInterestsList 
+            interests={interests} 
+            onEditClick={() => onNav('interests')} 
+          />
+        )}
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 w-full max-w-[390px] z-50 flex justify-around items-center px-2 py-3 bg-surface/90 backdrop-blur-md border-t border-outline-variant">
+      <nav className="fixed bottom-0 w-full max-w-7xl mx-auto z-50 flex justify-around items-center px-4 py-3 bg-surface/90 backdrop-blur-xl border-t border-outline-variant/30">
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={() => onNav('home')}
-          className="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:text-on-surface transition-all cursor-pointer"
+          className="flex flex-col items-center justify-center text-on-surface-variant px-3 py-2 hover:text-on-surface transition-all cursor-pointer group"
         >
           <span className="material-symbols-outlined text-2xl">home</span>
           <span className="text-[10px] mt-1 font-medium">الرئيسية</span>

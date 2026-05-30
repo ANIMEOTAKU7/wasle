@@ -94,7 +94,7 @@ export default function SecurityScreen({ onBack, onPrivacyPolicy }: { onBack: ()
       // Fetch all user data
       const [profileRes, postsRes, commentsRes, interestsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('posts').select('*').eq('author_id', user.id),
+        supabase.from('posts').select('*').eq('user_id', user.id),
         supabase.from('post_comments').select('*').eq('user_id', user.id),
         supabase.from('user_interests').select('interest_id').eq('user_id', user.id)
       ]);

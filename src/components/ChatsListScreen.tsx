@@ -65,7 +65,7 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
             
             // Get other user profile
             const { data: profile } = await supabase
-              .from('users')
+              .from('profiles')
               .select('id, username, avatar_url')
               .eq('id', otherUserId)
               .single();
@@ -188,7 +188,7 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
               
               // Get other user profile
               const { data: profile } = await supabase
-                .from('users')
+                .from('profiles')
                 .select('id, username, avatar_url')
                 .eq('id', otherUserId)
                 .single();
@@ -290,9 +290,21 @@ export default function ChatsListScreen({ onChatSelect, onBack, onNav }: { onCha
 
       <main className="w-full px-4 py-6 flex-grow overflow-y-auto custom-scrollbar pb-32">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-            <p className="text-on-surface-variant text-sm font-medium animate-pulse">جاري تحميل المحادثات...</p>
+          <div className="flex flex-col gap-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-4 bg-surface p-4 rounded-3xl border border-outline-variant/50 animate-pulse">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full bg-surface-container-highest"></div>
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="w-24 h-4 bg-surface-container-highest rounded-full"></div>
+                    <div className="w-12 h-3 bg-surface-container-highest rounded-full"></div>
+                  </div>
+                  <div className="w-3/4 h-3 bg-surface-container-highest rounded-full"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : chats.length > 0 ? (
           <div className="flex flex-col gap-2">

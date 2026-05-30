@@ -143,12 +143,16 @@ export default function NotificationsScreen({ onBack }: { onBack: () => void }) 
 
       <main className="flex-1 px-4 py-6 w-full flex flex-col relative z-10 overflow-y-auto custom-scrollbar">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full"
-            />
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-4 p-4 rounded-3xl bg-surface border border-outline-variant animate-pulse">
+                <div className="w-12 h-12 rounded-full bg-surface-container-highest shrink-0"></div>
+                <div className="flex-1 flex flex-col gap-2 pt-1">
+                  <div className="w-3/4 h-4 bg-surface-container-highest rounded-full"></div>
+                  <div className="w-1/2 h-3 bg-surface-container-highest rounded-full"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
